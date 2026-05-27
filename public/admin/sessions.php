@@ -45,11 +45,10 @@ include ROOT_DIR . '/templates/header.php';
                             <td>
                                 <?php
                                 $statusLabels = [
-                                    'pending'   => '⏳ En attente',
                                     'confirmed' => '✅ Confirmée',
                                     'cancelled' => '❌ Annulée',
                                 ];
-                                echo e($statusLabels[$s['status'] ?? 'pending'] ?? $s['status']);
+                                echo e($statusLabels[$s['status']] ?? $s['status']);
                                 ?>
                             </td>
                             <td>
