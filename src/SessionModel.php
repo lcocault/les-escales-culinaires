@@ -54,6 +54,22 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
+    // Archived sessions (closed/cancelled) for admin – newest first
+    public function getArchived(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT s.*,
+                    (SELECT COUNT(*) FROM bookings b
+                     WHERE b.session_id = s.id
+                       AND b.status IN ('confirmed', 'attended', 'absent', 'credited')) AS registered_count
+             FROM sessions s
+             WHERE s.deleted_at IS NULL
+               AND s.status IN ('confirmed', 'cancelled')
+             ORDER BY s.session_date DESC, s.start_time DESC"
+        );
+        return $stmt->fetchAll();
+    }
+
     public function findById(int $id): ?array
     {
         $stmt = $this->db->prepare(

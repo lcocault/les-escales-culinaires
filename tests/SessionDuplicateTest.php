@@ -119,4 +119,46 @@ class SessionDuplicateTest extends TestCase
         // The INSERT should set remaining_seats = max_attendees (not a separate value)
         $this->assertStringContainsString(':max_attendees, :max_attendees', $capturedSql);
     }
+
+    public function testGetArchivedReturnsRows(): void
+    {
+        $rows = [
+            ['id' => 9, 'title' => 'Atelier terminé', 'status' => 'confirmed'],
+        ];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('fetchAll')->willReturn($rows);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('query')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $result = $model->getArchived();
+
+        $this->assertSame($rows, $result);
+    }
+
+    public function testGetArchivedFiltersOnArchivedStatuses(): void
+    {
+        $capturedSql = '';
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('fetchAll')->willReturn([]);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('query')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $model->getArchived();
+
+        $this->assertStringContainsString("s.status IN ('confirmed', 'cancelled')", $capturedSql);
+    }
 }
