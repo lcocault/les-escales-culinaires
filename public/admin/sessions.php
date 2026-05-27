@@ -5,6 +5,7 @@ Auth::requireAdmin();
 
 $sessionModel = new SessionModel();
 $sessions = $sessionModel->getAll();
+$archivedSessions = $sessionModel->getArchived();
 
 $pageTitle = 'Gérer les séances';
 include ROOT_DIR . '/templates/header.php';
@@ -48,7 +49,7 @@ include ROOT_DIR . '/templates/header.php';
                                     'confirmed' => '✅ Confirmée',
                                     'cancelled' => '❌ Annulée',
                                 ];
-                                echo e($statusLabels[$s['status'] ?? 'pending'] ?? $s['status']);
+                                echo e($statusLabels[$s['status']] ?? $s['status']);
                                 ?>
                             </td>
                             <td>
@@ -80,6 +81,44 @@ include ROOT_DIR . '/templates/header.php';
                                         <button type="submit" class="btn btn--danger btn--icon" title="Supprimer" aria-label="Supprimer">🗑️</button>
                                     </form>
                                 </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php endif; ?>
+
+    <h2 style="margin-top:2rem">🗄️ Séances archivées</h2>
+    <?php if (empty($archivedSessions)): ?>
+        <p>Aucune séance archivée.</p>
+    <?php else: ?>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Titre</th>
+                        <th>Statut</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($archivedSessions as $s): ?>
+                        <tr>
+                            <td><?= e(formatSessionDateTime($s['session_date'], $s['start_time'])) ?></td>
+                            <td><?= e($s['title']) ?></td>
+                            <td>
+                                <?php
+                                $statusLabels = [
+                                    'confirmed' => '✅ Confirmée',
+                                    'cancelled' => '❌ Annulée',
+                                ];
+                                echo e($statusLabels[$s['status']] ?? $s['status']);
+                                ?>
+                            </td>
+                            <td>
+                                <a href="<?= APP_BASE_URL ?>/admin/session-edit.php?duplicate_from=<?= (int) $s['id'] ?>" class="btn btn--secondary btn--icon" title="Dupliquer" aria-label="Dupliquer">📋</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
