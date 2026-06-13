@@ -16,6 +16,10 @@ if (!$session) {
 $bookingModel = new BookingModel();
 $bookings = $bookingModel->getBySession($sessionId);
 
+// Load extra children for all bookings in one query
+$bookingIds    = array_column($bookings, 'id');
+$extraChildren = $bookingModel->getExtraChildrenMapped(array_map('intval', $bookingIds));
+
 $pageTitle = 'Participants – ' . $session['title'];
 include ROOT_DIR . '/templates/header.php';
 ?>
@@ -51,9 +55,54 @@ include ROOT_DIR . '/templates/header.php';
                     <?php foreach ($bookings as $b): ?>
                         <tr>
                             <td><?= e($b['first_name'] . ' ' . $b['last_name']) ?></td>
-                            <td><?= e(trim(($b['child_first_name'] ?? '') . ' ' . ($b['child_last_name'] ?? ''))) ?: '–' ?></td>
-                            <td><?= $b['child_age'] !== null ? (int) $b['child_age'] . ' ans' : '–' ?></td>
-                            <td><?= e($b['child_allergies'] ?? '–') ?></td>
+                            <td>
+                                <?php
+                                    $allChildren = [];
+                                    if (!empty($b['child_first_name'])) {
+                                        $allChildren[] = [
+                                            'name'      => trim(($b['child_first_name'] ?? '') . ' ' . ($b['child_last_name'] ?? '')),
+                                            'age'       => $b['child_age'] !== null ? (int) $b['child_age'] : null,
+                                            'allergies' => $b['child_allergies'] ?? null,
+                                        ];
+                                    }
+                                    foreach ($extraChildren[(int) $b['id']] ?? [] as $ec) {
+                                        $allChildren[] = [
+                                            'name'      => trim($ec['first_name'] . ' ' . $ec['last_name']),
+                                            'age'       => $ec['age'] !== null ? (int) $ec['age'] : null,
+                                            'allergies' => $ec['allergies'] ?? null,
+                                        ];
+                                    }
+                                ?>
+                                <?php if (empty($allChildren)): ?>
+                                    –
+                                <?php else: ?>
+                                    <?php foreach ($allChildren as $ci => $ch): ?>
+                                        <?php if ($ci > 0): ?><br><?php endif; ?>
+                                        <?= e($ch['name']) ?>
+                                        <?php if ($ch['age'] !== null): ?><small>(<?= $ch['age'] ?> ans)</small><?php endif; ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (empty($allChildren)): ?>
+                                    –
+                                <?php else: ?>
+                                    <?php foreach ($allChildren as $ci => $ch): ?>
+                                        <?php if ($ci > 0): ?><br><?php endif; ?>
+                                        <?= $ch['age'] !== null ? $ch['age'] . ' ans' : '–' ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (empty($allChildren)): ?>
+                                    –
+                                <?php else: ?>
+                                    <?php foreach ($allChildren as $ci => $ch): ?>
+                                        <?php if ($ci > 0): ?><br><?php endif; ?>
+                                        <?= e($ch['allergies'] ?? '–') ?>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </td>
                             <td><?= e($b['email']) ?></td>
                             <td><?= e($b['phone'] ?? '–') ?></td>
                             <td><?= e($b['phone2'] ?? '–') ?></td>

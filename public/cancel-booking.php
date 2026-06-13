@@ -65,7 +65,7 @@ if ($booking['used_credit']) {
 }
 
 // Restore the seat and delete the booking record.
-$sessionModel->incrementSeats((int) $booking['session_id']);
+$sessionModel->incrementSeats((int) $booking['session_id'], (int) ($booking['nb_children'] ?? 1));
 $bookingModel->deleteById($bookingId);
 
 // Notify the attendee and the admin.
