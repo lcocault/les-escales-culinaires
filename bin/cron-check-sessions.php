@@ -88,8 +88,8 @@ foreach ($sessions as $session) {
             // Cancel the booking.
             $bookingModel->cancel($bookingId);
 
-            // Restore the seat.
-            $sessionModel->incrementSeats($sessionId);
+            // Restore the seats (one per child registered).
+            $sessionModel->incrementSeats($sessionId, (int) ($booking['nb_children'] ?? 1));
 
             // Notify the attendee.
             $user = [

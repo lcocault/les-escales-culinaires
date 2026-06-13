@@ -282,21 +282,21 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
-    public function decrementSeats(int $id): void
+    public function decrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats - 1
-             WHERE id = :id AND remaining_seats > 0'
+            'UPDATE sessions SET remaining_seats = remaining_seats - :count
+             WHERE id = :id AND remaining_seats >= :min_seats'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':count' => $count, ':id' => $id, ':min_seats' => $count]);
     }
 
-    public function incrementSeats(int $id): void
+    public function incrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats + 1
-             WHERE id = :id AND remaining_seats < max_attendees'
+            'UPDATE sessions SET remaining_seats = remaining_seats + :count
+             WHERE id = :id AND remaining_seats + :add_count <= max_attendees'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':count' => $count, ':id' => $id, ':add_count' => $count]);
     }
 }

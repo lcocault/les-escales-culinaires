@@ -100,10 +100,26 @@ CREATE TABLE IF NOT EXISTS bookings (
     child_allergies     TEXT,                   -- food allergies (optional)
     promo_code_id               INTEGER     REFERENCES promo_codes(id) ON DELETE SET NULL,
     discount_cents              INTEGER     NOT NULL DEFAULT 0,
+    nb_children                 INTEGER     NOT NULL DEFAULT 1 CHECK (nb_children >= 1),
     rating_reminder_dismissed   BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, session_id)
 );
+
+-- Additional children per booking (2nd, 3rd, etc.) -------------------
+-- The first child's data is stored in the bookings table itself.
+CREATE TABLE IF NOT EXISTS booking_children (
+    id           SERIAL PRIMARY KEY,
+    booking_id   INTEGER      NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    first_name   VARCHAR(100) NOT NULL,
+    last_name    VARCHAR(100) NOT NULL,
+    age          INTEGER,
+    allergies    TEXT,
+    child_order  SMALLINT     NOT NULL DEFAULT 2,   -- 2 = second child, 3 = third, etc.
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_booking_children_booking_id ON booking_children(booking_id);
 
 -- Credits -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS credits (
