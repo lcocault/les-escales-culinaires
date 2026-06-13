@@ -53,26 +53,27 @@ include ROOT_DIR . '/templates/header.php';
                 </thead>
                 <tbody>
                     <?php foreach ($bookings as $b): ?>
+                        <?php
+                        // Build children list for this booking (primary + extras) once
+                        $allChildren = [];
+                        if (!empty($b['child_first_name'])) {
+                            $allChildren[] = [
+                                'name'      => trim(($b['child_first_name'] ?? '') . ' ' . ($b['child_last_name'] ?? '')),
+                                'age'       => $b['child_age'] !== null ? (int) $b['child_age'] : null,
+                                'allergies' => $b['child_allergies'] ?? null,
+                            ];
+                        }
+                        foreach ($extraChildren[(int) $b['id']] ?? [] as $ec) {
+                            $allChildren[] = [
+                                'name'      => trim($ec['first_name'] . ' ' . $ec['last_name']),
+                                'age'       => $ec['age'] !== null ? (int) $ec['age'] : null,
+                                'allergies' => $ec['allergies'] ?? null,
+                            ];
+                        }
+                        ?>
                         <tr>
                             <td><?= e($b['first_name'] . ' ' . $b['last_name']) ?></td>
                             <td>
-                                <?php
-                                    $allChildren = [];
-                                    if (!empty($b['child_first_name'])) {
-                                        $allChildren[] = [
-                                            'name'      => trim(($b['child_first_name'] ?? '') . ' ' . ($b['child_last_name'] ?? '')),
-                                            'age'       => $b['child_age'] !== null ? (int) $b['child_age'] : null,
-                                            'allergies' => $b['child_allergies'] ?? null,
-                                        ];
-                                    }
-                                    foreach ($extraChildren[(int) $b['id']] ?? [] as $ec) {
-                                        $allChildren[] = [
-                                            'name'      => trim($ec['first_name'] . ' ' . $ec['last_name']),
-                                            'age'       => $ec['age'] !== null ? (int) $ec['age'] : null,
-                                            'allergies' => $ec['allergies'] ?? null,
-                                        ];
-                                    }
-                                ?>
                                 <?php if (empty($allChildren)): ?>
                                     –
                                 <?php else: ?>

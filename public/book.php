@@ -152,7 +152,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Just re-render the form with the discount information visible.
             // Fall through to the HTML rendering below without creating a booking.
         } elseif ($action === 'basket') {
-            // Add to basket and redirect to basket page (basket supports one child per item)
+            // The basket supports one child per item; multi-child requires direct payment.
+            if ($nbChildren > 1) {
+                flash('warning', '⚠️ Le panier ne prend en charge qu\'un enfant par séance. '
+                    . 'Pour inscrire plusieurs enfants, utilisez le bouton « Procéder au paiement ».');
+                header('Location: ' . APP_BASE_URL . '/book.php?session_id=' . $sessionId);
+                exit;
+            }
+            // Add to basket and redirect to basket page
             $basketModel = new BasketModel();
             $basketModel->addItem(
                 Auth::currentUserId(),
