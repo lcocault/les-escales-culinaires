@@ -67,21 +67,23 @@ $userModel = new UserModel();
 $user = $userModel->findById(Auth::currentUserId());
 $useCredit = false;
 $errors = [];
-$childFirstName = '';
-$childLastName  = $user['last_name'] ?? '';
-$childAge       = '';
-$childAllergies = '';
+$childFirstName  = '';
+$childLastName   = $user['last_name'] ?? '';
+$childAge        = '';
+$childAllergies  = '';
+$numberOfChildren = 1;
 $promoCode      = '';
 $appliedPromo   = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Auth::verifyCsrf();
 
-    $childFirstName = trim($_POST['child_first_name'] ?? '');
-    $childLastName  = trim($_POST['child_last_name']  ?? '');
-    $childAge       = trim($_POST['child_age']        ?? '');
-    $childAllergies = trim($_POST['child_allergies']  ?? '');
-    $promoCode      = strtoupper(trim($_POST['promo_code'] ?? ''));
+    $childFirstName  = trim($_POST['child_first_name']   ?? '');
+    $childLastName   = trim($_POST['child_last_name']    ?? '');
+    $childAge        = trim($_POST['child_age']          ?? '');
+    $childAllergies  = trim($_POST['child_allergies']    ?? '');
+    $numberOfChildren = max(1, (int) ($_POST['number_of_children'] ?? 1));
+    $promoCode       = strtoupper(trim($_POST['promo_code'] ?? ''));
 
     if ($childFirstName === '') {
         $errors[] = 'Le prénom de l\'enfant est obligatoire.';
@@ -91,6 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($childAge === '' || !ctype_digit($childAge) || (int) $childAge < 1 || (int) $childAge > 17) {
         $errors[] = 'L\'âge de l\'enfant doit être un nombre entier entre 1 et 17.';
+    }
+    if ($numberOfChildren < 1 || $numberOfChildren > (int) $session['remaining_seats']) {
+        $errors[] = 'Le nombre d\'enfants doit être compris entre 1 et ' . (int) $session['remaining_seats'] . '.';
     }
 
     // Validate promo code if provided
@@ -121,7 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $childFirstName,
                 $childLastName,
                 (int) $childAge,
-                $childAllergies
+                $childAllergies,
+                $numberOfChildren
             );
             flash('success', '🛒 Séance ajoutée au panier !');
             header('Location: ' . APP_BASE_URL . '/basket.php');
@@ -137,7 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             (int) $childAge,
             $childAllergies,
             $appliedPromo ? (int) $appliedPromo['id'] : null,
-            $discountCents
+            $discountCents,
+            $numberOfChildren
         );
 
         // Increment promo code usage counter
@@ -149,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Free booking via credit
             $bookingModel->confirm($bookingId, 'credit');
             $userModel->updateCredits(Auth::currentUserId(), -1);
-            $sessionModel->decrementSeats($sessionId);
+            $sessionModel->decrementSeats($sessionId, $numberOfChildren);
             Mailer::sendBookingConfirmationToAttendee($user, $session);
             Mailer::sendBookingNotificationToAdmin($user, $session);
             flash('success', 'Réservation confirmée avec votre crédit !');
@@ -234,19 +241,26 @@ $availablePacks = array_filter($sessionPacks, fn($p) => (int) $p['is_available']
             <h3 class="form-section-title">Informations sur l'enfant</h3>
 
             <div class="form-group mt-1">
-                <label for="child_first_name">Prénom de l'enfant <span class="required">*</span></label>
+                <label for="number_of_children">Nombre d'enfants <span class="required">*</span></label>
+                <input type="number" id="number_of_children" name="number_of_children"
+                       value="<?= (int) $numberOfChildren ?>" min="1" max="<?= (int) $session['remaining_seats'] ?>" required>
+                <small style="color:var(--color-muted)">Places restantes : <?= (int) $session['remaining_seats'] ?></small>
+            </div>
+
+            <div class="form-group mt-1">
+                <label for="child_first_name">Prénom de l'enfant (principal) <span class="required">*</span></label>
                 <input type="text" id="child_first_name" name="child_first_name"
                        value="<?= e($childFirstName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_last_name">Nom de l'enfant <span class="required">*</span></label>
+                <label for="child_last_name">Nom de l'enfant (principal) <span class="required">*</span></label>
                 <input type="text" id="child_last_name" name="child_last_name"
                        value="<?= e($childLastName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_age">Âge de l'enfant <span class="required">*</span></label>
+                <label for="child_age">Âge de l'enfant (principal) <span class="required">*</span></label>
                 <input type="number" id="child_age" name="child_age"
                        value="<?= e($childAge) ?>" min="1" max="17" required>
             </div>

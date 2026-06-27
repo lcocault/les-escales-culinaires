@@ -37,6 +37,7 @@ include ROOT_DIR . '/templates/header.php';
                     <tr>
                         <th>Parent</th>
                         <th>Enfant</th>
+                        <th>Nb enfants</th>
                         <th>Âge</th>
                         <th>Allergies</th>
                         <th>E-mail</th>
@@ -52,6 +53,7 @@ include ROOT_DIR . '/templates/header.php';
                         <tr>
                             <td><?= e($b['first_name'] . ' ' . $b['last_name']) ?></td>
                             <td><?= e(trim(($b['child_first_name'] ?? '') . ' ' . ($b['child_last_name'] ?? ''))) ?: '–' ?></td>
+                            <td><?= (int) ($b['number_of_children'] ?? 1) ?></td>
                             <td><?= $b['child_age'] !== null ? (int) $b['child_age'] . ' ans' : '–' ?></td>
                             <td><?= e($b['child_allergies'] ?? '–') ?></td>
                             <td><?= e($b['email']) ?></td>

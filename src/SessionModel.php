@@ -43,7 +43,7 @@ class SessionModel
     {
         $stmt = $this->db->query(
             "SELECT s.*,
-                    (SELECT COUNT(*) FROM bookings b
+                    (SELECT COALESCE(SUM(b.number_of_children), 0) FROM bookings b
                      WHERE b.session_id = s.id
                        AND b.status IN ('confirmed', 'attended', 'absent', 'credited')) AS registered_count
              FROM sessions s
@@ -234,21 +234,21 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
-    public function decrementSeats(int $id): void
+    public function decrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats - 1
-             WHERE id = :id AND remaining_seats > 0'
+            'UPDATE sessions SET remaining_seats = remaining_seats - :count
+             WHERE id = :id AND remaining_seats >= :count'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id, ':count' => max(1, $count)]);
     }
 
-    public function incrementSeats(int $id): void
+    public function incrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats + 1
-             WHERE id = :id AND remaining_seats < max_attendees'
+            'UPDATE sessions SET remaining_seats = remaining_seats + :count
+             WHERE id = :id AND remaining_seats + :count2 <= max_attendees'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id, ':count' => max(1, $count), ':count2' => max(1, $count)]);
     }
 }

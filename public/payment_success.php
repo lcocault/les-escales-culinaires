@@ -37,7 +37,7 @@ if ($isPack) {
 
         $bookingModel->confirm((int) $bookingId, $paymentRef);
         $session = $sessionModel->findById((int) $booking['session_id']);
-        $sessionModel->decrementSeats((int) $booking['session_id']);
+        $sessionModel->decrementSeats((int) $booking['session_id'], (int) ($booking['number_of_children'] ?? 1));
 
         Mailer::sendBookingConfirmationToAttendee($user, $session);
         Mailer::sendBookingNotificationToAdmin($user, $session);
@@ -79,7 +79,7 @@ if ($isBasket) {
 
         $bookingModel->confirm((int) $bookingId, $paymentRef);
         $session = $sessionModel->findById((int) $booking['session_id']);
-        $sessionModel->decrementSeats((int) $booking['session_id']);
+        $sessionModel->decrementSeats((int) $booking['session_id'], (int) ($booking['number_of_children'] ?? 1));
 
         Mailer::sendBookingConfirmationToAttendee($user, $session);
         Mailer::sendBookingNotificationToAdmin($user, $session);
@@ -120,7 +120,7 @@ if ($booking['status'] === 'pending') {
 
     $sessionModel = new SessionModel();
     $session = $sessionModel->findById((int) $booking['session_id']);
-    $sessionModel->decrementSeats((int) $booking['session_id']);
+    $sessionModel->decrementSeats((int) $booking['session_id'], (int) ($booking['number_of_children'] ?? 1));
 
     $userModel = new UserModel();
     $user = $userModel->findById(Auth::currentUserId());

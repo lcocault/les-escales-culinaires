@@ -32,6 +32,8 @@ foreach ($items as $item) {
         $issue = 'Cette séance est passée.';
     } elseif ((int) $item['remaining_seats'] <= 0) {
         $issue = 'Cette séance est complète.';
+    } elseif ((int) ($item['number_of_children'] ?? 1) > (int) $item['remaining_seats']) {
+        $issue = 'Cette séance n\'a pas assez de places pour ' . (int) $item['number_of_children'] . ' enfant(s).';
     } else {
         $existing = $bookingModel->findByUserAndSession(Auth::currentUserId(), (int) $item['session_id']);
         if ($existing && in_array($existing['status'], ['confirmed', 'attended', 'pending'])) {
@@ -115,6 +117,9 @@ include ROOT_DIR . '/templates/header.php';
                                     <?= e($item['child_first_name'] . ' ' . $item['child_last_name']) ?>
                                     <?php if ($item['child_age']): ?>
                                         <small>(<?= (int) $item['child_age'] ?> ans)</small>
+                                    <?php endif; ?>
+                                    <?php if ((int) ($item['number_of_children'] ?? 1) > 1): ?>
+                                        <br><small style="color:var(--color-muted)"><?= (int) $item['number_of_children'] ?> enfants</small>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     –

@@ -43,18 +43,20 @@ $userModel = new UserModel();
 $user      = $userModel->findById(Auth::currentUserId());
 $errors    = [];
 
-$childFirstName = '';
-$childLastName  = $user['last_name'] ?? '';
-$childAge       = '';
-$childAllergies = '';
+$childFirstName  = '';
+$childLastName   = $user['last_name'] ?? '';
+$childAge        = '';
+$childAllergies  = '';
+$numberOfChildren = 1;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Auth::verifyCsrf();
 
-    $childFirstName = trim($_POST['child_first_name'] ?? '');
-    $childLastName  = trim($_POST['child_last_name']  ?? '');
-    $childAge       = trim($_POST['child_age']        ?? '');
-    $childAllergies = trim($_POST['child_allergies']  ?? '');
+    $childFirstName  = trim($_POST['child_first_name']   ?? '');
+    $childLastName   = trim($_POST['child_last_name']    ?? '');
+    $childAge        = trim($_POST['child_age']          ?? '');
+    $childAllergies  = trim($_POST['child_allergies']    ?? '');
+    $numberOfChildren = max(1, (int) ($_POST['number_of_children'] ?? 1));
 
     if ($childFirstName === '') {
         $errors[] = 'Le prénom de l\'enfant est obligatoire.';
@@ -74,6 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+        // Verify each session has enough remaining seats for the requested number of children
+        foreach ($sessions as $s) {
+            if ((int) $s['remaining_seats'] < $numberOfChildren) {
+                flash('error', 'La séance « ' . $s['title'] . ' » n\'a pas assez de places pour ' . $numberOfChildren . ' enfant(s).');
+                header('Location: ' . APP_BASE_URL . '/pack.php?id=' . $packId);
+                exit;
+            }
+        }
+
         // Create one pending booking per session
         $bookingIds = [];
         foreach ($sessions as $s) {
@@ -90,7 +101,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $childFirstName,
                     $childLastName,
                     (int) $childAge,
-                    $childAllergies
+                    $childAllergies,
+                    null,
+                    0,
+                    $numberOfChildren
                 );
             }
         }
@@ -171,20 +185,28 @@ include ROOT_DIR . '/templates/header.php';
             <h3 class="form-section-title">Informations sur l'enfant</h3>
             <p style="font-size:.9rem;color:var(--color-muted)">Ces informations s'appliqueront à toutes les séances du pack.</p>
 
+            <?php $minSeats = min(array_column($sessions, 'remaining_seats')); ?>
             <div class="form-group mt-1">
-                <label for="child_first_name">Prénom de l'enfant <span class="required">*</span></label>
+                <label for="number_of_children">Nombre d'enfants <span class="required">*</span></label>
+                <input type="number" id="number_of_children" name="number_of_children"
+                       value="<?= (int) $numberOfChildren ?>" min="1" max="<?= (int) $minSeats ?>" required>
+                <small style="color:var(--color-muted)">Places restantes (minimum parmi les séances) : <?= (int) $minSeats ?></small>
+            </div>
+
+            <div class="form-group mt-1">
+                <label for="child_first_name">Prénom de l'enfant (principal) <span class="required">*</span></label>
                 <input type="text" id="child_first_name" name="child_first_name"
                        value="<?= e($childFirstName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_last_name">Nom de l'enfant <span class="required">*</span></label>
+                <label for="child_last_name">Nom de l'enfant (principal) <span class="required">*</span></label>
                 <input type="text" id="child_last_name" name="child_last_name"
                        value="<?= e($childLastName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_age">Âge de l'enfant <span class="required">*</span></label>
+                <label for="child_age">Âge de l'enfant (principal) <span class="required">*</span></label>
                 <input type="number" id="child_age" name="child_age"
                        value="<?= e($childAge) ?>" min="1" max="17" required>
             </div>

@@ -115,6 +115,76 @@ class BasketModelTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // addItem – number_of_children is stored and passed correctly
+    // -------------------------------------------------------------------------
+
+    public function testAddItemIncludesNumberOfChildrenColumn(): void
+    {
+        $capturedSql = '';
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new BasketModel();
+        $model->addItem(1, 2, 'Alice', 'Dupont', 8, 'noix', 2);
+
+        $this->assertStringContainsString('number_of_children', $capturedSql);
+    }
+
+    public function testAddItemPassesNumberOfChildrenParameter(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new BasketModel();
+        $model->addItem(1, 2, 'Alice', 'Dupont', 8, 'noix', 3);
+
+        $this->assertSame(3, $capturedParams[':number_of_children']);
+    }
+
+    public function testAddItemDefaultsNumberOfChildrenToOne(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new BasketModel();
+        $model->addItem(1, 2, 'Alice', 'Dupont', 8);
+
+        $this->assertSame(1, $capturedParams[':number_of_children']);
+    }
+
+    // -------------------------------------------------------------------------
     // countByUser – returns integer from fetchColumn
     // -------------------------------------------------------------------------
 
