@@ -41,6 +41,7 @@ class SessionSeatsChildrenTest extends TestCase
                 $capturedParams = $params;
                 return true;
             });
+        $stmt->method('rowCount')->willReturn(1);
 
         $pdo = $this->createMock(PDO::class);
         $pdo->method('prepare')
@@ -52,11 +53,29 @@ class SessionSeatsChildrenTest extends TestCase
         $this->injectPdo($pdo);
 
         $model = new SessionModel();
-        $model->decrementSeats(5, 3);
+        $result = $model->decrementSeats(5, 3);
 
+        $this->assertTrue($result);
         $this->assertStringContainsString(':count', $capturedSql);
         $this->assertSame(3, $capturedParams[':count']);
         $this->assertSame(5, $capturedParams[':id']);
+    }
+
+    public function testDecrementSeatsReturnsFalseWhenNoRowUpdated(): void
+    {
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+        $stmt->method('rowCount')->willReturn(0);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $result = $model->decrementSeats(99, 10);
+
+        $this->assertFalse($result);
     }
 
     public function testDecrementSeatsDefaultsToOne(): void

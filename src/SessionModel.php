@@ -234,13 +234,14 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
-    public function decrementSeats(int $id, int $count = 1): void
+    public function decrementSeats(int $id, int $count = 1): bool
     {
         $stmt = $this->db->prepare(
             'UPDATE sessions SET remaining_seats = remaining_seats - :count
              WHERE id = :id AND remaining_seats >= :count'
         );
         $stmt->execute([':id' => $id, ':count' => max(1, $count)]);
+        return $stmt->rowCount() > 0;
     }
 
     public function incrementSeats(int $id, int $count = 1): void

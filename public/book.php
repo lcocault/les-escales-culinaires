@@ -156,7 +156,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Free booking via credit
             $bookingModel->confirm($bookingId, 'credit');
             $userModel->updateCredits(Auth::currentUserId(), -1);
-            $sessionModel->decrementSeats($sessionId, $numberOfChildren);
+            if (!$sessionModel->decrementSeats($sessionId, $numberOfChildren)) {
+                error_log('decrementSeats failed for booking #' . $bookingId . ' (session #' . $sessionId . ', count=' . $numberOfChildren . ')');
+            }
             Mailer::sendBookingConfirmationToAttendee($user, $session);
             Mailer::sendBookingNotificationToAdmin($user, $session);
             flash('success', 'Réservation confirmée avec votre crédit !');
