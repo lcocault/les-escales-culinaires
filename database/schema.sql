@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     child_allergies     TEXT,                   -- food allergies (optional)
     promo_code_id       INTEGER     REFERENCES promo_codes(id) ON DELETE SET NULL,
     discount_cents      INTEGER     NOT NULL DEFAULT 0,
+    number_of_children  INTEGER     NOT NULL DEFAULT 1 CHECK (number_of_children >= 1),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, session_id)
 );
@@ -124,6 +125,7 @@ CREATE TABLE IF NOT EXISTS basket_items (
     child_last_name  VARCHAR(100),
     child_age        INTEGER,
     child_allergies  TEXT,
+    number_of_children INTEGER NOT NULL DEFAULT 1 CHECK (number_of_children >= 1),
     created_at       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, session_id)
 );

@@ -43,6 +43,12 @@ foreach ($items as $item) {
         continue;
     }
 
+    $numberOfChildren = (int) ($item['number_of_children'] ?? 1);
+    if ($numberOfChildren > (int) $item['remaining_seats']) {
+        $errors[] = '« ' . $item['title'] . ' » n\'a pas assez de places disponibles pour ' . $numberOfChildren . ' enfant(s).';
+        continue;
+    }
+
     $existing = $bookingModel->findByUserAndSession(Auth::currentUserId(), $sessionId);
     if ($existing && in_array($existing['status'], ['confirmed', 'attended', 'pending'])) {
         $errors[] = 'Vous avez déjà réservé « ' . $item['title'] . ' ».';
@@ -65,7 +71,10 @@ foreach ($items as $item) {
         (string) ($item['child_first_name'] ?? ''),
         (string) ($item['child_last_name']  ?? ''),
         (int) ($item['child_age'] ?? 0),
-        (string) ($item['child_allergies']  ?? '')
+        (string) ($item['child_allergies']  ?? ''),
+        null,
+        0,
+        (int) ($item['number_of_children'] ?? 1)
     );
     $bookingIds[] = $bookingId;
 }

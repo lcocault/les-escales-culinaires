@@ -127,4 +127,96 @@ class BookingChildInfoTest extends TestCase
 
         $this->assertNull($capturedParams[':cage']);
     }
+
+    public function testCreateIncludesNumberOfChildrenColumn(): void
+    {
+        $capturedSql = '';
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+        $stmt->method('fetchColumn')->willReturn(1);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new BookingModel();
+        $model->create(1, 2, false, 'Alice', 'Dupont', 8, 'noix', null, 0, 3);
+
+        $this->assertStringContainsString('number_of_children', $capturedSql);
+    }
+
+    public function testCreatePassesNumberOfChildrenParameter(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+        $stmt->method('fetchColumn')->willReturn(7);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new BookingModel();
+        $model->create(1, 2, false, 'Alice', 'Dupont', 8, 'noix', null, 0, 2);
+
+        $this->assertSame(2, $capturedParams[':number_of_children']);
+    }
+
+    public function testCreateDefaultsNumberOfChildrenToOne(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+        $stmt->method('fetchColumn')->willReturn(8);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new BookingModel();
+        $model->create(1, 2, false, 'Bob', 'Martin', 10);
+
+        $this->assertSame(1, $capturedParams[':number_of_children']);
+    }
+
+    public function testCreateEnforcesMinimumOfOneChild(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+        $stmt->method('fetchColumn')->willReturn(9);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new BookingModel();
+        $model->create(1, 2, false, 'Bob', 'Martin', 10, '', null, 0, 0);
+
+        $this->assertSame(1, $capturedParams[':number_of_children']);
+    }
 }

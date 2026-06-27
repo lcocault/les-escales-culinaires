@@ -50,25 +50,28 @@ class BasketModel
         string $childFirstName = '',
         string $childLastName = '',
         int $childAge = 0,
-        string $childAllergies = ''
+        string $childAllergies = '',
+        int $numberOfChildren = 1
     ): void {
         $stmt = $this->db->prepare(
             'INSERT INTO basket_items
-                 (user_id, session_id, child_first_name, child_last_name, child_age, child_allergies)
-             VALUES (:uid, :sid, :cfn, :cln, :cage, :callergies)
+                 (user_id, session_id, child_first_name, child_last_name, child_age, child_allergies, number_of_children)
+             VALUES (:uid, :sid, :cfn, :cln, :cage, :callergies, :number_of_children)
              ON CONFLICT (user_id, session_id) DO UPDATE
-                 SET child_first_name = EXCLUDED.child_first_name,
-                     child_last_name  = EXCLUDED.child_last_name,
-                     child_age        = EXCLUDED.child_age,
-                     child_allergies  = EXCLUDED.child_allergies'
+                 SET child_first_name  = EXCLUDED.child_first_name,
+                     child_last_name   = EXCLUDED.child_last_name,
+                     child_age         = EXCLUDED.child_age,
+                     child_allergies   = EXCLUDED.child_allergies,
+                     number_of_children = EXCLUDED.number_of_children'
         );
         $stmt->execute([
-            ':uid'        => $userId,
-            ':sid'        => $sessionId,
-            ':cfn'        => $childFirstName !== '' ? $childFirstName : null,
-            ':cln'        => $childLastName  !== '' ? $childLastName  : null,
-            ':cage'       => $childAge > 0 ? $childAge : null,
-            ':callergies' => $childAllergies !== '' ? $childAllergies : null,
+            ':uid'                => $userId,
+            ':sid'                => $sessionId,
+            ':cfn'                => $childFirstName !== '' ? $childFirstName : null,
+            ':cln'                => $childLastName  !== '' ? $childLastName  : null,
+            ':cage'               => $childAge > 0 ? $childAge : null,
+            ':callergies'         => $childAllergies !== '' ? $childAllergies : null,
+            ':number_of_children' => max(1, $numberOfChildren),
         ]);
     }
 

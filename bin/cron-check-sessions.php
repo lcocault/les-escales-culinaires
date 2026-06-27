@@ -47,7 +47,7 @@ foreach ($sessions as $session) {
     $sessionId    = (int) $session['id'];
     $sessionTitle = $session['title'];
     $confirmedBookings = $bookingModel->getConfirmedBySession($sessionId);
-    $count = count($confirmedBookings);
+    $count = array_sum(array_column($confirmedBookings, 'number_of_children')) ?: count($confirmedBookings);
 
     echo '[' . date('Y-m-d H:i:s') . "] Session #{$sessionId} \"{$sessionTitle}\":"
         . " {$count} confirmed booking(s), minimum is {$minAttendees}." . PHP_EOL;
@@ -88,8 +88,8 @@ foreach ($sessions as $session) {
             // Cancel the booking.
             $bookingModel->cancel($bookingId);
 
-            // Restore the seat.
-            $sessionModel->incrementSeats($sessionId);
+            // Restore the seat(s).
+            $sessionModel->incrementSeats($sessionId, (int) ($booking['number_of_children'] ?? 1));
 
             // Notify the attendee.
             $user = [

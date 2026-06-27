@@ -80,27 +80,29 @@ class BookingModel
         int $childAge = 0,
         string $childAllergies = '',
         ?int $promoCodeId = null,
-        int $discountCents = 0
+        int $discountCents = 0,
+        int $numberOfChildren = 1
     ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO bookings
                  (user_id, session_id, used_credit,
                   child_first_name, child_last_name, child_age, child_allergies,
-                  promo_code_id, discount_cents)
+                  promo_code_id, discount_cents, number_of_children)
              VALUES (:uid, :sid, :credit, :cfn, :cln, :cage, :callergies,
-                     :promo_code_id, :discount_cents)
+                     :promo_code_id, :discount_cents, :number_of_children)
              RETURNING id'
         );
         $stmt->execute([
-            ':uid'           => $userId,
-            ':sid'           => $sessionId,
-            ':credit'        => ($usedCredit ? 'TRUE' : 'FALSE'),
-            ':cfn'           => $childFirstName,
-            ':cln'           => $childLastName,
-            ':cage'          => $childAge > 0 ? $childAge : null,
-            ':callergies'    => $childAllergies !== '' ? $childAllergies : null,
-            ':promo_code_id' => $promoCodeId,
-            ':discount_cents' => $discountCents,
+            ':uid'                => $userId,
+            ':sid'                => $sessionId,
+            ':credit'             => ($usedCredit ? 'TRUE' : 'FALSE'),
+            ':cfn'                => $childFirstName,
+            ':cln'                => $childLastName,
+            ':cage'               => $childAge > 0 ? $childAge : null,
+            ':callergies'         => $childAllergies !== '' ? $childAllergies : null,
+            ':promo_code_id'      => $promoCodeId,
+            ':discount_cents'     => $discountCents,
+            ':number_of_children' => max(1, $numberOfChildren),
         ]);
         return (int) $stmt->fetchColumn();
     }
