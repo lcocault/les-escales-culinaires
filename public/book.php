@@ -247,20 +247,26 @@ $availablePacks = array_filter($sessionPacks, fn($p) => (int) $p['is_available']
                 <small style="color:var(--color-muted)">Places restantes : <?= (int) $session['remaining_seats'] ?></small>
             </div>
 
+            <?php if ((int) $numberOfChildren > 1): ?>
+                <p style="font-size:.9rem;color:var(--color-muted)">
+                    Renseignez les informations d'un des enfants inscrits (elles s'appliqueront à tous).
+                </p>
+            <?php endif; ?>
+
             <div class="form-group mt-1">
-                <label for="child_first_name">Prénom de l'enfant (principal) <span class="required">*</span></label>
+                <label for="child_first_name">Prénom de l'enfant <span class="required">*</span></label>
                 <input type="text" id="child_first_name" name="child_first_name"
                        value="<?= e($childFirstName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_last_name">Nom de l'enfant (principal) <span class="required">*</span></label>
+                <label for="child_last_name">Nom de l'enfant <span class="required">*</span></label>
                 <input type="text" id="child_last_name" name="child_last_name"
                        value="<?= e($childLastName) ?>" required>
             </div>
 
             <div class="form-group mt-1">
-                <label for="child_age">Âge de l'enfant (principal) <span class="required">*</span></label>
+                <label for="child_age">Âge de l'enfant <span class="required">*</span></label>
                 <input type="number" id="child_age" name="child_age"
                        value="<?= e($childAge) ?>" min="1" max="17" required>
             </div>

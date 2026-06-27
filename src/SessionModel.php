@@ -246,9 +246,9 @@ class SessionModel
     public function incrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats + :count
-             WHERE id = :id AND remaining_seats + :count2 <= max_attendees'
+            'UPDATE sessions SET remaining_seats = LEAST(remaining_seats + :count, max_attendees)
+             WHERE id = :id'
         );
-        $stmt->execute([':id' => $id, ':count' => max(1, $count), ':count2' => max(1, $count)]);
+        $stmt->execute([':id' => $id, ':count' => max(1, $count)]);
     }
 }

@@ -131,7 +131,7 @@ class SessionSeatsChildrenTest extends TestCase
         $model = new SessionModel();
         $model->incrementSeats(7, 2);
 
-        $this->assertStringContainsString(':count', $capturedSql);
+        $this->assertStringContainsString('LEAST', $capturedSql);
         $this->assertSame(2, $capturedParams[':count']);
         $this->assertSame(7, $capturedParams[':id']);
     }
