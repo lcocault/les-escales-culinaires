@@ -65,4 +65,16 @@ class UserModel
         );
         $stmt->execute([':delta' => $delta, ':id' => $userId]);
     }
+
+    public function getAnnouncementRecipients(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT id, first_name, last_name, email
+             FROM users
+             WHERE deleted_at IS NULL
+               AND role = 'user'
+             ORDER BY last_name ASC, first_name ASC"
+        );
+        return $stmt->fetchAll();
+    }
 }

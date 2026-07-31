@@ -97,4 +97,56 @@ class MailerRegistrationTest extends TestCase
         $this->assertStringNotContainsString('<script>', $body);
         $this->assertStringContainsString('&lt;script&gt;', $body);
     }
+
+    public function testUpcomingSessionsAnnouncementContainsConfiguredPeriodAndSessions(): void
+    {
+        $user = [
+            'first_name' => 'Alice',
+            'last_name'  => 'Dupont',
+            'email'      => 'alice@example.com',
+        ];
+        $sessions = [
+            [
+                'id'           => 7,
+                'title'        => 'Les fruits de saison',
+                'session_date' => '2026-05-01',
+                'start_time'   => '10:00:00',
+                'end_time'     => '12:00:00',
+                'age_category' => '6-12',
+                'price_cents'  => 2500,
+            ],
+        ];
+
+        $body = $this->callPrivate('upcomingSessionsAnnouncementBody', [$user, $sessions, '2026-05-01', '2026-05-31']);
+
+        $this->assertStringContainsString('2026-05-01', $body);
+        $this->assertStringContainsString('2026-05-31', $body);
+        $this->assertStringContainsString('Les fruits de saison', $body);
+        $this->assertStringContainsString(APP_BASE_URL . '/session.php?id=7', $body);
+    }
+
+    public function testUpcomingSessionsAnnouncementEscapesHtmlInSessionTitle(): void
+    {
+        $user = [
+            'first_name' => 'Alice',
+            'last_name'  => 'Dupont',
+            'email'      => 'alice@example.com',
+        ];
+        $sessions = [
+            [
+                'id'           => 9,
+                'title'        => '<b>Atelier</b>',
+                'session_date' => '2026-05-10',
+                'start_time'   => '09:00:00',
+                'end_time'     => '11:00:00',
+                'age_category' => '6-12',
+                'price_cents'  => 2000,
+            ],
+        ];
+
+        $body = $this->callPrivate('upcomingSessionsAnnouncementBody', [$user, $sessions, '2026-05-01', '2026-05-31']);
+
+        $this->assertStringNotContainsString('<b>Atelier</b>', $body);
+        $this->assertStringContainsString('&lt;b&gt;Atelier&lt;/b&gt;', $body);
+    }
 }

@@ -54,6 +54,22 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
+    // Archived sessions (closed/cancelled) for admin – newest first
+    public function getArchived(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT s.*,
+                    (SELECT COUNT(*) FROM bookings b
+                     WHERE b.session_id = s.id
+                       AND b.status IN ('confirmed', 'attended', 'absent', 'credited')) AS registered_count
+             FROM sessions s
+             WHERE s.deleted_at IS NULL
+               AND s.status IN ('confirmed', 'cancelled')
+             ORDER BY s.session_date DESC, s.start_time DESC"
+        );
+        return $stmt->fetchAll();
+    }
+
     public function findById(int $id): ?array
     {
         $stmt = $this->db->prepare(
@@ -149,6 +165,20 @@ class SessionModel
         $stmt->execute([':id' => $id]);
     }
 
+    public function closePastSession(int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE sessions
+             SET status = 'confirmed'
+             WHERE id = :id
+               AND deleted_at IS NULL
+               AND status = 'pending'
+               AND (session_date::timestamp + end_time::interval) < NOW()"
+        );
+        $stmt->execute([':id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+
     /**
      * Returns pending sessions whose start datetime falls within the next 24 hours.
      * Used by the cron job to decide whether to confirm or cancel each session.
@@ -166,6 +196,24 @@ class SessionModel
              ORDER BY session_date ASC, start_time ASC"
         );
         $stmt->execute();
+        return $stmt->fetchAll();
+    }
+
+    public function getUpcomingInPeriod(string $fromDate, string $toDate): array
+    {
+        $stmt = $this->db->prepare(
+            "SELECT id, title, theme, session_date, start_time, end_time, age_category, price_cents
+             FROM sessions
+             WHERE deleted_at IS NULL
+               AND status != 'cancelled'
+               AND session_date >= CURRENT_DATE
+               AND session_date BETWEEN :from_date AND :to_date
+             ORDER BY session_date ASC, start_time ASC"
+        );
+        $stmt->execute([
+            ':from_date' => $fromDate,
+            ':to_date'   => $toDate,
+        ]);
         return $stmt->fetchAll();
     }
 
@@ -234,21 +282,21 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
-    public function decrementSeats(int $id): void
+    public function decrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats - 1
-             WHERE id = :id AND remaining_seats > 0'
+            'UPDATE sessions SET remaining_seats = remaining_seats - :count
+             WHERE id = :id AND remaining_seats >= :min_seats'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':count' => $count, ':id' => $id, ':min_seats' => $count]);
     }
 
-    public function incrementSeats(int $id): void
+    public function incrementSeats(int $id, int $count = 1): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE sessions SET remaining_seats = remaining_seats + 1
-             WHERE id = :id AND remaining_seats < max_attendees'
+            'UPDATE sessions SET remaining_seats = remaining_seats + :count
+             WHERE id = :id AND remaining_seats + :add_count <= max_attendees'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':count' => $count, ':id' => $id, ':add_count' => $count]);
     }
 }

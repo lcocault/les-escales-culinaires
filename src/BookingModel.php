@@ -80,29 +80,91 @@ class BookingModel
         int $childAge = 0,
         string $childAllergies = '',
         ?int $promoCodeId = null,
-        int $discountCents = 0
+        int $discountCents = 0,
+        int $nbChildren = 1
     ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO bookings
                  (user_id, session_id, used_credit,
                   child_first_name, child_last_name, child_age, child_allergies,
-                  promo_code_id, discount_cents)
+                  promo_code_id, discount_cents, nb_children)
              VALUES (:uid, :sid, :credit, :cfn, :cln, :cage, :callergies,
-                     :promo_code_id, :discount_cents)
+                     :promo_code_id, :discount_cents, :nb_children)
              RETURNING id'
         );
         $stmt->execute([
-            ':uid'           => $userId,
-            ':sid'           => $sessionId,
-            ':credit'        => ($usedCredit ? 'TRUE' : 'FALSE'),
-            ':cfn'           => $childFirstName,
-            ':cln'           => $childLastName,
-            ':cage'          => $childAge > 0 ? $childAge : null,
-            ':callergies'    => $childAllergies !== '' ? $childAllergies : null,
-            ':promo_code_id' => $promoCodeId,
+            ':uid'            => $userId,
+            ':sid'            => $sessionId,
+            ':credit'         => ($usedCredit ? 'TRUE' : 'FALSE'),
+            ':cfn'            => $childFirstName,
+            ':cln'            => $childLastName,
+            ':cage'           => $childAge > 0 ? $childAge : null,
+            ':callergies'     => $childAllergies !== '' ? $childAllergies : null,
+            ':promo_code_id'  => $promoCodeId,
             ':discount_cents' => $discountCents,
+            ':nb_children'    => max(1, $nbChildren),
         ]);
         return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * Inserts additional children (2nd, 3rd, etc.) for an existing booking.
+     * Each element of $children must have keys: first_name, last_name, age, allergies.
+     * child_order starts at 2 for the second child.
+     */
+    public function addExtraChildren(int $bookingId, array $children): void
+    {
+        $stmt = $this->db->prepare(
+            'INSERT INTO booking_children (booking_id, first_name, last_name, age, allergies, child_order)
+             VALUES (:booking_id, :first_name, :last_name, :age, :allergies, :child_order)'
+        );
+        $order = 2;
+        foreach ($children as $child) {
+            $stmt->execute([
+                ':booking_id'  => $bookingId,
+                ':first_name'  => $child['first_name'],
+                ':last_name'   => $child['last_name'],
+                ':age'         => isset($child['age']) && (int) $child['age'] > 0 ? (int) $child['age'] : null,
+                ':allergies'   => ($child['allergies'] ?? '') !== '' ? $child['allergies'] : null,
+                ':child_order' => $order++,
+            ]);
+        }
+    }
+
+    /**
+     * Returns all extra children (2nd, 3rd, etc.) for a booking, ordered by child_order.
+     */
+    public function getExtraChildren(int $bookingId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT * FROM booking_children WHERE booking_id = :bid ORDER BY child_order ASC'
+        );
+        $stmt->execute([':bid' => $bookingId]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Returns all extra children for a list of booking IDs, indexed by booking_id.
+     *
+     * @param int[] $bookingIds
+     * @return array<int, array>  Keyed by booking_id, each value is an array of children rows.
+     */
+    public function getExtraChildrenMapped(array $bookingIds): array
+    {
+        if (empty($bookingIds)) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($bookingIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT * FROM booking_children WHERE booking_id IN ($placeholders) ORDER BY booking_id, child_order ASC"
+        );
+        $stmt->execute(array_values($bookingIds));
+        $rows = $stmt->fetchAll();
+        $mapped = [];
+        foreach ($rows as $row) {
+            $mapped[(int) $row['booking_id']][] = $row;
+        }
+        return $mapped;
     }
 
     public function storePaymentRef(int $bookingId, string $ref): void
@@ -168,5 +230,39 @@ class BookingModel
         );
         $stmt->execute([':uid' => $userId, ':sid' => $sessionId]);
         return (int) $stmt->fetchColumn() > 0;
+    }
+
+    /**
+     * Returns all 'attended' bookings that have no rating and whose
+     * rating_reminder_dismissed flag is not set, ordered by session date.
+     * Includes user and session info for display.
+     */
+    public function getAttendedWithoutRating(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT b.id AS booking_id,
+                    b.user_id, b.session_id,
+                    u.first_name, u.last_name, u.email,
+                    s.title AS session_title, s.session_date
+             FROM bookings b
+             JOIN users    u ON u.id = b.user_id
+             JOIN sessions s ON s.id = b.session_id
+             WHERE b.status = 'attended'
+               AND b.rating_reminder_dismissed = FALSE
+               AND NOT EXISTS (
+                   SELECT 1 FROM ratings r
+                   WHERE r.booking_id = b.id
+               )
+             ORDER BY s.session_date DESC, u.last_name ASC, u.first_name ASC"
+        );
+        return $stmt->fetchAll();
+    }
+
+    public function dismissRatingReminder(int $bookingId): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE bookings SET rating_reminder_dismissed = TRUE WHERE id = :id'
+        );
+        $stmt->execute([':id' => $bookingId]);
     }
 }

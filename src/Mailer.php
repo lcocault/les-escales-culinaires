@@ -113,6 +113,152 @@ class Mailer
         self::send($user['email'], $subject, $body);
     }
 
+    public static function sendUpcomingSessionsAnnouncement(
+        array $user,
+        array $sessions,
+        string $fromDate,
+        string $toDate
+    ): void {
+        $safeFrom = str_replace(["\r", "\n"], '', $fromDate);
+        $safeTo   = str_replace(["\r", "\n"], '', $toDate);
+        $subject = 'Prochaines séances – du ' . $safeFrom . ' au ' . $safeTo;
+        $body    = self::upcomingSessionsAnnouncementBody($user, $sessions, $fromDate, $toDate);
+        self::send($user['email'], $subject, $body);
+    }
+
+    public static function sendGroupBookingRequestToUser(
+        array $user,
+        array $request
+    ): void {
+        $subject = 'Demande de séance anniversaire reçue';
+        $body    = self::groupBookingRequestUserBody($user, $request);
+        self::send($user['email'], $subject, $body);
+    }
+
+    public static function sendGroupBookingRequestToAdmin(
+        array $user,
+        array $request
+    ): void {
+        $subject = '[Admin] Nouvelle demande de séance anniversaire';
+        $body    = self::groupBookingRequestAdminBody($user, $request);
+        self::send(ADMIN_EMAIL, $subject, $body);
+    }
+
+    public static function sendGroupBookingStatusUpdate(
+        array $user,
+        array $request
+    ): void {
+        $statusLabel = $request['status'] === 'confirmed' ? 'confirmée' : 'annulée';
+        $subject     = 'Votre demande de séance anniversaire a été ' . $statusLabel;
+        $body        = self::groupBookingStatusUpdateBody($user, $request);
+        self::send($user['email'], $subject, $body);
+    }
+
+    private static function groupBookingRequestUserBody(array $user, array $request): string
+    {
+        $name        = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
+        $date        = htmlspecialchars($request['preferred_date']);
+        $nbChildren  = (int) $request['nb_children'];
+        $location    = $request['location_type'] === 'home' ? 'à votre domicile' : 'aux Escales Culinaires';
+        $unitCents   = $request['location_type'] === 'home' ? 3000 : 3500;
+        $unitPrice   = number_format($unitCents / 100, 2, ',', ' ') . ' €';
+        $totalCents  = $nbChildren * $unitCents;
+        $totalPrice  = number_format($totalCents / 100, 2, ',', ' ') . ' €';
+        $baseUrl     = APP_BASE_URL;
+
+        return <<<HTML
+        <p>Bonjour {$name},</p>
+        <p>Nous avons bien reçu votre demande de séance anniversaire. Voici un récapitulatif :</p>
+        <ul>
+            <li>📅 Date souhaitée : <strong>{$date}</strong></li>
+            <li>👧 Nombre d'enfants : <strong>{$nbChildren}</strong></li>
+            <li>📍 Lieu : <strong>{$location}</strong></li>
+            <li>💶 Tarif estimé : {$unitPrice}/enfant → <strong>{$totalPrice} au total</strong></li>
+        </ul>
+        <p>Nous vous contacterons dans les plus brefs délais pour confirmer la disponibilité et finaliser les détails.</p>
+        <p>À très bientôt aux Escales Culinaires !</p>
+        <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
+        HTML;
+    }
+
+    private static function groupBookingRequestAdminBody(array $user, array $request): string
+    {
+        $name        = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
+        $email       = htmlspecialchars($user['email']);
+        $phone       = htmlspecialchars($request['contact_phone'] ?? '–');
+        $date        = htmlspecialchars($request['preferred_date']);
+        $nbChildren  = (int) $request['nb_children'];
+        $location    = $request['location_type'] === 'home'
+            ? 'Domicile : ' . htmlspecialchars($request['location_address'] ?? '–')
+            : 'Escales Culinaires';
+        $allergies   = htmlspecialchars($request['allergies'] ?? '–');
+        $info        = htmlspecialchars($request['additional_info'] ?? '–');
+        $baseUrl     = APP_BASE_URL;
+        $adminUrl    = $baseUrl . '/admin/group-booking-view.php?id=' . (int) $request['id'];
+
+        return <<<HTML
+        <p>Nouvelle demande de séance anniversaire soumise :</p>
+        <ul>
+            <li>👤 Contact : <strong>{$name}</strong> ({$email}) – tél. {$phone}</li>
+            <li>📅 Date souhaitée : <strong>{$date}</strong></li>
+            <li>👧 Nombre d'enfants : <strong>{$nbChildren}</strong></li>
+            <li>📍 Lieu : {$location}</li>
+            <li>🥜 Allergies : {$allergies}</li>
+            <li>📝 Informations complémentaires : {$info}</li>
+        </ul>
+        <p><a href="{$adminUrl}">→ Traiter la demande dans l'administration</a></p>
+        HTML;
+    }
+
+    private static function groupBookingStatusUpdateBody(array $user, array $request): string
+    {
+        $name        = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
+        $date        = htmlspecialchars($request['preferred_date']);
+        $statusLabel = $request['status'] === 'confirmed' ? 'confirmée ✅' : 'annulée ❌';
+        $adminNotes  = $request['admin_notes'] ? htmlspecialchars($request['admin_notes']) : null;
+        $baseUrl     = APP_BASE_URL;
+
+        $notesBlock = $adminNotes
+            ? "<p>💬 Message de notre équipe : <em>{$adminNotes}</em></p>"
+            : '';
+
+        return <<<HTML
+        <p>Bonjour {$name},</p>
+        <p>Votre demande de séance anniversaire pour le <strong>{$date}</strong> a été <strong>{$statusLabel}</strong>.</p>
+        {$notesBlock}
+        <p>Pour toute question, répondez simplement à cet e-mail.</p>
+        <p>À bientôt aux Escales Culinaires !</p>
+        <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
+        HTML;
+    }
+
+    public static function sendRatingReminder(
+        array $user,
+        array $session
+    ): void {
+        $subject = 'Votre avis nous intéresse – ' . $session['title'];
+        $body    = self::ratingReminderBody($user, $session);
+        self::send($user['email'], $subject, $body);
+    }
+
+    private static function ratingReminderBody(array $user, array $session): string
+    {
+        $name      = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
+        $title     = htmlspecialchars($session['title']);
+        $date      = htmlspecialchars($session['session_date']);
+        $baseUrl   = APP_BASE_URL;
+        $ratingUrl = $baseUrl . '/rate-session.php?session_id=' . (int) $session['id'];
+
+        return <<<HTML
+        <p>Bonjour {$name},</p>
+        <p>Nous espérons que la séance <strong>{$title}</strong> du {$date} vous a plu !</p>
+        <p>Votre avis est précieux pour nous aider à améliorer nos ateliers.
+           Cela ne prend qu'une minute :</p>
+        <p><a href="{$ratingUrl}">⭐ Donner mon avis sur la séance</a></p>
+        <p>Merci d'avance, et à bientôt aux Escales Culinaires !</p>
+        HTML;
+    }
+
     private static function sessionConfirmationBody(array $user, array $session): string
     {
         $name    = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
@@ -281,7 +427,7 @@ class Mailer
         $start   = htmlspecialchars($session['start_time']);
         $end     = htmlspecialchars($session['end_time']);
         $baseUrl = APP_BASE_URL;
-        $sessionUrl = $baseUrl . '/ateliers/seance.php?id=' . (int) $session['id'];
+        $sessionUrl = $baseUrl . '/session.php?id=' . (int) $session['id'];
 
         return <<<HTML
         <p>Bonjour {$name},</p>
@@ -290,6 +436,52 @@ class Mailer
         <p>Pour réserver votre place, cliquez sur le lien ci-dessous :</p>
         <p><a href="{$sessionUrl}">Voir la séance et réserver</a></p>
         <p>À bientôt aux Escales Culinaires !</p>
+        HTML;
+    }
+
+    private static function upcomingSessionsAnnouncementBody(
+        array $user,
+        array $sessions,
+        string $fromDate,
+        string $toDate
+    ): string {
+        $name       = htmlspecialchars(trim(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')));
+        $safeFrom   = htmlspecialchars($fromDate);
+        $safeTo     = htmlspecialchars($toDate);
+        $baseUrl    = APP_BASE_URL;
+        $sessionsUi = '';
+
+        foreach ($sessions as $session) {
+            $title      = htmlspecialchars((string) ($session['title'] ?? 'Séance'));
+            $date       = htmlspecialchars((string) ($session['session_date'] ?? ''));
+            $start      = htmlspecialchars((string) ($session['start_time'] ?? ''));
+            $end        = htmlspecialchars((string) ($session['end_time'] ?? ''));
+            $age        = htmlspecialchars((string) ($session['age_category'] ?? ''));
+            $priceCents = isset($session['price_cents']) ? (int) $session['price_cents'] : 0;
+            $price      = number_format($priceCents / 100, 2, ',', ' ') . ' €';
+            $sessionUrl = $baseUrl . '/session.php?id=' . (int) ($session['id'] ?? 0);
+
+            $sessionsUi .= <<<HTML
+            <li style="margin-bottom:.75rem">
+                <strong>{$title}</strong><br>
+                📅 {$date} – 🕐 {$start} à {$end}<br>
+                👧 Âge : {$age} – 💶 Tarif : {$price}<br>
+                <a href="{$sessionUrl}">Voir la séance</a>
+            </li>
+            HTML;
+        }
+
+        if ($sessionsUi === '') {
+            $sessionsUi = '<li>Aucune séance programmée sur cette période.</li>';
+        }
+
+        return <<<HTML
+        <p>Bonjour {$name},</p>
+        <p>Voici les séances prévues du <strong>{$safeFrom}</strong> au <strong>{$safeTo}</strong> :</p>
+        <ul>
+            {$sessionsUi}
+        </ul>
+        <p><a href="{$baseUrl}/">Voir toutes les séances</a></p>
         HTML;
     }
 }
