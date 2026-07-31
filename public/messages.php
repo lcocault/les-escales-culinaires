@@ -3,6 +3,7 @@
 require_once __DIR__ . '/init.php';
 
 $pageTitle    = 'Actualités';
+$navContext   = 'sessions';
 $messageModel = new GeneralMessageModel();
 $messages     = $messageModel->getAll();
 

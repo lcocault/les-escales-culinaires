@@ -70,6 +70,33 @@ class PaymentService
     }
 
     /**
+     * Creates a checkout URL for a shop order containing multiple products.
+     *
+     * @param int    $orderId     The shop_orders record ID.
+     * @param array  $lineItems   Array of ['name' => string, 'amount_cents' => int, 'quantity' => int] entries.
+     * @param int    $totalCents  Total amount in the smallest currency unit.
+     * @param string $currency    ISO 4217 currency code (e.g. "eur").
+     * @return array{url: string, squareOrderId: ?string}
+     * @throws RuntimeException  If the configured provider is unsupported or misconfigured.
+     */
+    public static function createShopOrderCheckoutUrl(
+        int $orderId,
+        array $lineItems,
+        int $totalCents,
+        string $currency
+    ): array {
+        $provider = defined('PAYMENT_PROVIDER') ? strtolower(PAYMENT_PROVIDER) : 'stripe';
+
+        return match ($provider) {
+            'stripe' => self::stripeShopOrderCheckoutUrl($orderId, $lineItems, $currency),
+            'square' => self::squareShopOrderCheckoutUrl($orderId, $totalCents, $currency),
+            default  => throw new RuntimeException(
+                "Unsupported PAYMENT_PROVIDER \"$provider\". Must be \"stripe\" or \"square\"."
+            ),
+        };
+    }
+
+    /**
      * Issues a full refund for a previously completed payment.
      *
      * @param string $paymentIntentId  The payment/intent ID stored on the booking.
@@ -343,6 +370,91 @@ class PaymentService
             ]),
             'checkoutOptions' => new \Square\Types\CheckoutOptions([
                 'redirectUrl' => APP_BASE_URL . '/payment_success.php?' . $urlTag . '=1',
+            ]),
+        ]);
+
+        $response = $client->checkout->paymentLinks->create($request);
+        $link = $response->getPaymentLink();
+
+        if ($link === null || $link->getUrl() === null) {
+            throw new RuntimeException('Square did not return a payment link URL.');
+        }
+
+        return ['url' => $link->getUrl(), 'squareOrderId' => $link->getOrderId()];
+    }
+
+    // -------------------------------------------------------------------------
+    // Stripe – shop order checkout (multiple line items with quantities)
+    // -------------------------------------------------------------------------
+
+    private static function stripeShopOrderCheckoutUrl(
+        int $orderId,
+        array $lineItems,
+        string $currency
+    ): array {
+        if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '' || STRIPE_SECRET_KEY === 'sk_test_...') {
+            return ['url' => APP_BASE_URL . '/boutique/order-success.php?order_id=' . $orderId . '&_demo=1', 'squareOrderId' => null];
+        }
+
+        \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
+
+        $stripeLineItems = array_map(fn($item) => [
+            'price_data' => [
+                'currency'     => strtolower($currency),
+                'product_data' => ['name' => $item['name']],
+                'unit_amount'  => $item['amount_cents'],
+            ],
+            'quantity' => (int) ($item['quantity'] ?? 1),
+        ], $lineItems);
+
+        $session = \Stripe\Checkout\Session::create([
+            'payment_method_types' => ['card'],
+            'line_items'           => $stripeLineItems,
+            'mode'                 => 'payment',
+            'success_url'          => APP_BASE_URL . '/boutique/order-success.php?order_id=' . $orderId
+                                      . '&payment_intent={CHECKOUT_SESSION_ID}',
+            'cancel_url'           => APP_BASE_URL . '/boutique/order-cancel.php?order_id=' . $orderId,
+            'metadata'             => ['shop_order_id' => $orderId],
+        ]);
+
+        return ['url' => $session->url, 'squareOrderId' => null];
+    }
+
+    // -------------------------------------------------------------------------
+    // Square – shop order checkout (single QuickPay with total amount)
+    // -------------------------------------------------------------------------
+
+    private static function squareShopOrderCheckoutUrl(
+        int $orderId,
+        int $totalCents,
+        string $currency
+    ): array {
+        if (!defined('SQUARE_ACCESS_TOKEN') || SQUARE_ACCESS_TOKEN === '' || SQUARE_ACCESS_TOKEN === 'EAAAl...') {
+            return ['url' => APP_BASE_URL . '/boutique/order-success.php?order_id=' . $orderId . '&_demo=1', 'squareOrderId' => null];
+        }
+
+        $environment = (defined('SQUARE_ENVIRONMENT') && SQUARE_ENVIRONMENT === 'production')
+            ? SquareEnvironments::Production->value
+            : SquareEnvironments::Sandbox->value;
+
+        $client = new SquareClient(
+            token: SQUARE_ACCESS_TOKEN,
+            options: ['baseUrl' => $environment],
+        );
+
+        $request = new CreatePaymentLinkRequest([
+            'idempotencyKey' => bin2hex(random_bytes(16)),
+            'description'    => 'Commande boutique #' . $orderId,
+            'quickPay'       => new QuickPay([
+                'name'       => 'Commande boutique #' . $orderId,
+                'locationId' => SQUARE_LOCATION_ID,
+                'priceMoney' => new Money([
+                    'amount'   => $totalCents,
+                    'currency' => strtoupper($currency),
+                ]),
+            ]),
+            'checkoutOptions' => new \Square\Types\CheckoutOptions([
+                'redirectUrl' => APP_BASE_URL . '/boutique/order-success.php?order_id=' . $orderId,
             ]),
         ]);
 

@@ -49,6 +49,7 @@ foreach ($items as $item) {
 $totalCents = array_sum(array_column($validItems, 'price_cents'));
 
 $pageTitle = 'Mon panier';
+$navContext = 'sessions';
 include ROOT_DIR . '/templates/header.php';
 ?>
 <div class="container">
@@ -99,7 +100,7 @@ include ROOT_DIR . '/templates/header.php';
                         ?>
                         <tr class="<?= $isInvalid ? 'basket-row--invalid' : '' ?>">
                             <td>
-                                <a href="<?= APP_BASE_URL ?>/session.php?id=<?= (int) $item['session_id'] ?>">
+                                <a href="<?= APP_BASE_URL ?>/ateliers/seance.php?id=<?= (int) $item['session_id'] ?>">
                                     <?= e($item['title']) ?>
                                 </a>
                                 <?php if ($isInvalid): ?>

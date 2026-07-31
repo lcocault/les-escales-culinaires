@@ -131,6 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Réserver – ' . $pack['title'];
+$navContext = 'sessions';
 include ROOT_DIR . '/templates/header.php';
 ?>
 <div class="container">

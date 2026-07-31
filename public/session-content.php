@@ -16,7 +16,7 @@ if (!$session) {
 $bookingModel = new BookingModel();
 if (!$bookingModel->hasAccessToContent(Auth::currentUserId(), $sessionId) && !Auth::isAdmin()) {
     flash('error', 'Accès refusé. Vous devez avoir participé à cette séance.');
-    header('Location: ' . APP_BASE_URL . '/session.php?id=' . $sessionId);
+    header('Location: ' . APP_BASE_URL . '/ateliers/seance.php?id=' . $sessionId);
     exit;
 }
 
@@ -33,6 +33,7 @@ $stmt->execute([':sid' => $sessionId]);
 $mediaList = $stmt->fetchAll();
 
 $pageTitle = 'Contenu – ' . $session['title'];
+$navContext = 'sessions';
 include ROOT_DIR . '/templates/header.php';
 ?>
 <div class="container">

@@ -224,6 +224,64 @@ CREATE TABLE IF NOT EXISTS group_booking_requests (
     deleted_at              TIMESTAMPTZ
 );
 
+
+-- Shop products (prepared meals catalog) ---------------------
+CREATE TABLE IF NOT EXISTS shop_products (
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(255) NOT NULL,
+    description    TEXT,
+    photo_filename VARCHAR(255),
+    external_photo_url TEXT,
+    price_cents    INTEGER      NOT NULL CHECK (price_cents >= 0),
+    portion_count  INTEGER      NOT NULL DEFAULT 1,
+    min_order_portions INTEGER  NOT NULL DEFAULT 1,
+    is_available   BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    deleted_at     TIMESTAMPTZ,
+    CONSTRAINT chk_shop_products_portion_count_positive CHECK (portion_count > 0),
+    CONSTRAINT chk_shop_products_min_order_portions_positive CHECK (min_order_portions > 0),
+    CONSTRAINT chk_shop_products_single_photo_source CHECK (
+        NOT (
+            photo_filename IS NOT NULL
+            AND external_photo_url IS NOT NULL
+        )
+    )
+);
+
+-- Shop orders -------------------------------------------------
+CREATE TABLE IF NOT EXISTS shop_orders (
+    id                SERIAL PRIMARY KEY,
+    user_id           INTEGER      NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    status            VARCHAR(20)  NOT NULL DEFAULT 'pending'
+                          CHECK (status IN ('pending', 'paid', 'prepared', 'delivered', 'cancelled')),
+    delivery_method   VARCHAR(30)  NOT NULL
+                          CHECK (delivery_method IN ('home', 'market_wednesday', 'market_friday', 'shop')),
+    delivery_date     DATE         NOT NULL,
+    delivery_address  TEXT,
+    delivery_fee_cents INTEGER     NOT NULL DEFAULT 0 CHECK (delivery_fee_cents >= 0),
+    total_cents       INTEGER      NOT NULL CHECK (total_cents >= 0),
+    payment_intent_id VARCHAR(255),
+    paid_at           TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- Shop order items --------------------------------------------
+CREATE TABLE IF NOT EXISTS shop_order_items (
+    id              SERIAL PRIMARY KEY,
+    order_id        INTEGER      NOT NULL REFERENCES shop_orders(id) ON DELETE CASCADE,
+    product_id      INTEGER      REFERENCES shop_products(id) ON DELETE SET NULL,
+    product_name    VARCHAR(255) NOT NULL,
+    unit_price_cents INTEGER     NOT NULL CHECK (unit_price_cents >= 0),
+    quantity        INTEGER      NOT NULL CHECK (quantity > 0)
+);
+
+-- Canceled market delivery dates -----------------------------------
+CREATE TABLE IF NOT EXISTS shop_market_delivery_cancellations (
+    id            SERIAL PRIMARY KEY,
+    delivery_date DATE        NOT NULL UNIQUE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Password reset tokens ---------------------------------------
 CREATE TABLE IF NOT EXISTS password_resets (
     id          SERIAL PRIMARY KEY,

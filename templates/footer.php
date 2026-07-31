@@ -26,8 +26,8 @@
             <div class="site-footer__col">
                 <nav aria-label="Liens utiles">
                     <ul class="site-footer__links">
-                        <li><a href="<?= APP_BASE_URL ?>/about.php">Le concept</a></li>
-                        <li><a href="<?= APP_BASE_URL ?>/faq.php">FAQ</a></li>
+                        <li><a href="<?= APP_BASE_URL ?>/ateliers/concept.php">Le concept</a></li>
+                        <li><a href="<?= APP_BASE_URL ?>/ateliers/faq.php">FAQ</a></li>
                         <li><a href="<?= APP_BASE_URL ?>/all-ratings.php">⭐ Avis</a></li>
                     </ul>
                 </nav>

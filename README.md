@@ -1,8 +1,15 @@
 # Escales Culinaires
 
-Site web pour l'organisation d'ateliers de cuisine pour les enfants.
+Site web pour **Les Escales Culinaires**, une activité à Toulouse qui propose à la fois des ateliers de cuisine pour les enfants et une boutique gourmande.
 
-## Fonctionnalités
+## Périmètre du projet
+
+Le projet couvre deux espaces distincts accessibles depuis la page d'accueil :
+
+- 🍳 **Ateliers de cuisine** – organisation et réservation des séances de cuisine pour les enfants (site historique).
+- 🛍️ **Boutique** – vente de produits et équipements de cuisine (à venir).
+
+## Fonctionnalités – Ateliers de cuisine
 
 - 🍳 **Séances publiques** – liste des séances à venir avec résumé
 - 🛒 **Réservation en ligne** – paiement via Stripe ou Square (configurable)

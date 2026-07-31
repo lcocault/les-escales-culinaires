@@ -2,7 +2,8 @@
 // public/session-ratings.php – public page to view ratings for a session
 require_once __DIR__ . '/init.php';
 
-$sessionId = isset($_GET['session_id']) ? (int) $_GET['session_id'] : 0;
+$sessionId    = isset($_GET['session_id']) ? (int) $_GET['session_id'] : 0;
+$navContext   = 'sessions';
 $sessionModel = new SessionModel();
 $session = $sessionModel->findById($sessionId);
 
@@ -101,6 +102,6 @@ include ROOT_DIR . '/templates/header.php';
         <?php endif; ?>
     <?php endif; ?>
 
-    <p class="mt-2"><a href="<?= APP_BASE_URL ?>/session.php?id=<?= $sessionId ?>">← Retour à la séance</a></p>
+    <p class="mt-2"><a href="<?= APP_BASE_URL ?>/ateliers/seance.php?id=<?= $sessionId ?>">← Retour à la séance</a></p>
 </div>
 <?php include ROOT_DIR . '/templates/footer.php'; ?>

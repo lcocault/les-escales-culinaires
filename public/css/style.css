@@ -606,3 +606,43 @@ td .actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 a.photo-thumb { display:inline-block; }
 a.photo-thumb img { cursor:zoom-in; transition: opacity .15s; }
 a.photo-thumb:hover img { opacity: .85; }
+
+/* ─── Portal homepage ─── */
+.portal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+.portal-card {
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    color: var(--color-text);
+    transition: box-shadow .2s, transform .2s;
+}
+a.portal-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); text-decoration: none; }
+.portal-card__icon { font-size: 3.5rem; }
+.portal-card__title {
+    font-family: var(--font-heading);
+    font-size: 1.6rem;
+    color: var(--color-red);
+}
+.portal-card__desc { font-size: 1rem; color: var(--color-muted); }
+.portal-card__cta { margin-top: .5rem; }
+.portal-card--coming-soon { opacity: .7; cursor: default; }
+.badge--coming-soon {
+    background: var(--color-yellow);
+    color: var(--color-brown);
+    padding: .3rem .9rem;
+    border-radius: 999px;
+    font-size: .85rem;
+    font-weight: 700;
+}

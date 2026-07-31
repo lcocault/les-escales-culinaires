@@ -17,6 +17,8 @@ require_once ROOT_DIR . '/src/PaymentService.php';
 require_once ROOT_DIR . '/src/RatingModel.php';
 require_once ROOT_DIR . '/src/PackModel.php';
 require_once ROOT_DIR . '/src/PromoCodeModel.php';
+require_once ROOT_DIR . '/src/ShopProductModel.php';
+require_once ROOT_DIR . '/src/ShopOrderModel.php';
 require_once ROOT_DIR . '/src/GroupBookingModel.php';
 require_once ROOT_DIR . '/src/GroupSessionSlotModel.php';
 
@@ -104,4 +106,49 @@ function ageCategoryLabel(string $category): string
         '13+'  => '13 ans et +',
     ];
     return $labels[$category] ?? $category;
+}
+
+// Helper: returns the number of items in the current shop cart (session-based).
+function shopCartCount(): int
+{
+    Auth::start();
+    $cart = $_SESSION['shop_cart'] ?? [];
+    return array_sum($cart);
+}
+
+// Helper: label for a shop delivery method
+function shopDeliveryLabel(string $method): string
+{
+    $labels = [
+        'home'             => 'Livraison à domicile',
+        'market_wednesday' => 'Retrait marché Croix-de-Pierre (mercredi)',
+        'market_friday'    => 'Retrait marché Croix-de-Pierre (vendredi)',
+        'shop'             => 'Retrait en boutique',
+    ];
+    return $labels[$method] ?? $method;
+}
+
+// Helper: label for a shop order status
+function shopOrderStatusLabel(string $status): string
+{
+    $labels = [
+        'pending'   => '⏳ En attente de paiement',
+        'paid'      => '💳 Payée',
+        'prepared'  => '🍱 Préparée',
+        'delivered' => '✅ Livrée / Remise',
+        'cancelled' => '❌ Annulée',
+    ];
+    return $labels[$status] ?? $status;
+}
+
+// Helper: resolves a shop product image source (external URL or uploaded file path).
+function shopProductImageSrc(array $product): ?string
+{
+    if (!empty($product['external_photo_url'])) {
+        return (string) $product['external_photo_url'];
+    }
+    if (!empty($product['photo_filename'])) {
+        return APP_BASE_URL . '/uploads/shop/' . $product['photo_filename'];
+    }
+    return null;
 }

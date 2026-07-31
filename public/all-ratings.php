@@ -8,6 +8,7 @@ $totalCount  = count($ratings);
 $overallAvg  = $ratingModel->getOverallAverage();
 
 $pageTitle = 'Tous les avis';
+$navContext = 'sessions';
 include ROOT_DIR . '/templates/header.php';
 ?>
 <div class="container">
