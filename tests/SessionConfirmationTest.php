@@ -116,6 +116,56 @@ class SessionConfirmationTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // SessionModel::closePastSession()
+    // -------------------------------------------------------------------------
+
+    public function testClosePastSessionUsesConfirmedStatusAndPastCondition(): void
+    {
+        $capturedSql = '';
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturnCallback(function (array $params) use (&$capturedParams) {
+            $capturedParams = $params;
+            return true;
+        });
+        $stmt->method('rowCount')->willReturn(1);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $model->closePastSession(4);
+
+        $this->assertStringContainsString("'confirmed'", $capturedSql);
+        $this->assertStringContainsString("status = 'pending'", $capturedSql);
+        $this->assertStringContainsString('session_date::timestamp + end_time::interval', $capturedSql);
+        $this->assertStringContainsString('< NOW()', $capturedSql);
+        $this->assertSame(4, $capturedParams[':id']);
+    }
+
+    public function testClosePastSessionReturnsFalseWhenNothingUpdated(): void
+    {
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')->willReturn(true);
+        $stmt->method('rowCount')->willReturn(0);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $this->assertFalse($model->closePastSession(6));
+    }
+
+    // -------------------------------------------------------------------------
     // SessionModel::getSessionsDueForCheck()
     // -------------------------------------------------------------------------
 

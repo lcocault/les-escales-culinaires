@@ -7,7 +7,6 @@ $bookingModel = new BookingModel();
 $bookings = $bookingModel->getByUser(Auth::currentUserId());
 
 $pageTitle = 'Mes réservations';
-$navContext = 'sessions';
 include ROOT_DIR . '/templates/header.php';
 ?>
 <div class="container">
@@ -46,7 +45,7 @@ include ROOT_DIR . '/templates/header.php';
                                      && ($sessionStart - time()) >= 48 * 3600;
                         ?>
                         <tr>
-                            <td><a href="<?= APP_BASE_URL ?>/ateliers/seance.php?id=<?= (int) $b['session_id'] ?>"><?= e($b['title']) ?></a></td>
+                            <td><a href="<?= APP_BASE_URL ?>/session.php?id=<?= (int) $b['session_id'] ?>"><?= e($b['title']) ?></a></td>
                             <td><?= e(formatDate($b['session_date'])) ?></td>
                             <td><?= $label ?></td>
                             <td>

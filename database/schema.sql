@@ -98,11 +98,28 @@ CREATE TABLE IF NOT EXISTS bookings (
     child_last_name     VARCHAR(100),           -- last name of the child attending
     child_age           INTEGER,                -- age of the child (may differ from session age category)
     child_allergies     TEXT,                   -- food allergies (optional)
-    promo_code_id       INTEGER     REFERENCES promo_codes(id) ON DELETE SET NULL,
-    discount_cents      INTEGER     NOT NULL DEFAULT 0,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    promo_code_id               INTEGER     REFERENCES promo_codes(id) ON DELETE SET NULL,
+    discount_cents              INTEGER     NOT NULL DEFAULT 0,
+    nb_children                 INTEGER     NOT NULL DEFAULT 1 CHECK (nb_children >= 1),
+    rating_reminder_dismissed   BOOLEAN     NOT NULL DEFAULT FALSE,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (user_id, session_id)
 );
+
+-- Additional children per booking (2nd, 3rd, etc.) -------------------
+-- The first child's data is stored in the bookings table itself.
+CREATE TABLE IF NOT EXISTS booking_children (
+    id           SERIAL PRIMARY KEY,
+    booking_id   INTEGER      NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    first_name   VARCHAR(100) NOT NULL,
+    last_name    VARCHAR(100) NOT NULL,
+    age          INTEGER,
+    allergies    TEXT,
+    child_order  SMALLINT     NOT NULL DEFAULT 2,   -- 2 = second child, 3 = third, etc.
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_booking_children_booking_id ON booking_children(booking_id);
 
 -- Credits -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS credits (
@@ -167,6 +184,46 @@ CREATE TABLE IF NOT EXISTS pack_sessions (
     session_id INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     PRIMARY KEY (pack_id, session_id)
 );
+
+-- Group session slots (admin-defined bookable slots for birthday / group sessions) ------
+CREATE TABLE IF NOT EXISTS group_session_slots (
+    id                      SERIAL PRIMARY KEY,
+    title                   VARCHAR(255)    NOT NULL DEFAULT 'Atelier anniversaire',
+    description             TEXT,
+    slot_date               DATE            NOT NULL,
+    start_time              TIME            NOT NULL,
+    end_time                TIME            NOT NULL,
+    max_groups                      INTEGER         NOT NULL DEFAULT 1 CHECK (max_groups > 0),
+    remaining_groups                INTEGER         NOT NULL DEFAULT 1 CHECK (remaining_groups >= 0),
+    price_per_child_home_cents      INTEGER         NOT NULL DEFAULT 3000 CHECK (price_per_child_home_cents >= 0),
+    price_per_child_escales_cents   INTEGER         NOT NULL DEFAULT 3500 CHECK (price_per_child_escales_cents >= 0),
+    status                          VARCHAR(20)     NOT NULL DEFAULT 'open'
+                                CHECK (status IN ('open', 'full', 'cancelled')),
+    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    deleted_at              TIMESTAMPTZ,
+    CONSTRAINT remaining_lte_max_groups CHECK (remaining_groups <= max_groups)
+);
+
+-- Group booking requests (birthday parties / private group sessions) ------
+CREATE TABLE IF NOT EXISTS group_booking_requests (
+    id                      SERIAL PRIMARY KEY,
+    user_id                 INTEGER      NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    group_session_slot_id   INTEGER      REFERENCES group_session_slots(id) ON DELETE SET NULL,
+    contact_phone           VARCHAR(50),
+    nb_children             INTEGER      NOT NULL CHECK (nb_children BETWEEN 4 AND 8),
+    children_ages           TEXT,                      -- free-text description of the children's ages
+    preferred_date          DATE         NOT NULL,     -- must be at least 7 days in the future at submission time
+    location_type           VARCHAR(10)  NOT NULL CHECK (location_type IN ('home', 'escales')),
+    location_address        TEXT,                      -- required when location_type = 'home'
+    allergies               TEXT,
+    additional_info         TEXT,
+    status                  VARCHAR(20)  NOT NULL DEFAULT 'pending'
+                                CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+    admin_notes             TEXT,
+    created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    deleted_at              TIMESTAMPTZ
+);
+
 
 -- Shop products (prepared meals catalog) ---------------------
 CREATE TABLE IF NOT EXISTS shop_products (
