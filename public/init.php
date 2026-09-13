@@ -21,6 +21,7 @@ require_once ROOT_DIR . '/src/ShopProductModel.php';
 require_once ROOT_DIR . '/src/ShopOrderModel.php';
 require_once ROOT_DIR . '/src/GroupBookingModel.php';
 require_once ROOT_DIR . '/src/GroupSessionSlotModel.php';
+require_once ROOT_DIR . '/src/WorkshopAgenda.php';
 
 // Helper: escape output (accepts null, returns empty string for null)
 function e(?string $value): string
@@ -106,53 +107,6 @@ function ageCategoryLabel(string $category): string
         '13+'  => '13 ans et +',
     ];
     return $labels[$category] ?? $category;
-}
-
-// Helper: build workshop agenda items from regular/private sessions and group slots
-function buildWorkshopAgendaItems(array $sessions, array $groupSlots): array
-{
-    $allItems = [];
-    foreach ($sessions as $session) {
-        $allItems[] = [
-            'type'    => 'session',
-            'segment' => !empty($session['is_private']) ? 'group_private' : 'regular',
-            'date'    => $session['session_date'],
-            'time'    => $session['start_time'],
-            'data'    => $session,
-        ];
-    }
-    foreach ($groupSlots as $slot) {
-        $allItems[] = [
-            'type'    => 'group_slot',
-            'segment' => 'group_private',
-            'date'    => $slot['slot_date'],
-            'time'    => $slot['start_time'],
-            'data'    => $slot,
-        ];
-    }
-
-    usort($allItems, static function (array $a, array $b): int {
-        $dateComparison = strcmp((string) $a['date'], (string) $b['date']);
-        if ($dateComparison !== 0) {
-            return $dateComparison;
-        }
-
-        return strcmp((string) $a['time'], (string) $b['time']);
-    });
-    return $allItems;
-}
-
-// Helper: filter workshop agenda items by segment (all|regular|group_private)
-function filterWorkshopAgendaItems(array $items, string $selectedFilter): array
-{
-    if ($selectedFilter === 'all') {
-        return $items;
-    }
-
-    return array_values(array_filter(
-        $items,
-        static fn(array $item): bool => $item['segment'] === $selectedFilter
-    ));
 }
 
 // Helper: returns the number of items in the current shop cart (session-based).

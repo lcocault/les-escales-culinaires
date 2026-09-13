@@ -25,8 +25,8 @@ if (!array_key_exists($selectedFilter, $filterLabels)) {
 }
 $minGroupChildren = (int) GroupBookingModel::MIN_CHILDREN;
 $maxGroupChildren = (int) GroupBookingModel::MAX_CHILDREN;
-$allItems = buildWorkshopAgendaItems($sessions, $groupSlots);
-$visibleItems = filterWorkshopAgendaItems($allItems, $selectedFilter);
+$allItems = WorkshopAgenda::buildItems($sessions, $groupSlots);
+$visibleItems = WorkshopAgenda::filterItems($allItems, $selectedFilter);
 
 include ROOT_DIR . '/templates/header.php';
 ?>
