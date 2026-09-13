@@ -48,4 +48,20 @@ final class WorkshopAgenda
             static fn(array $item): bool => $item['segment'] === $selectedFilter
         ));
     }
+
+    public static function resolveGroupSlotPrices(array $slot): array
+    {
+        $homePrice = isset($slot['price_per_child_home_cents']) && (int) $slot['price_per_child_home_cents'] > 0
+            ? (int) $slot['price_per_child_home_cents']
+            : null;
+        $escalesPrice = isset($slot['price_per_child_escales_cents']) && (int) $slot['price_per_child_escales_cents'] > 0
+            ? (int) $slot['price_per_child_escales_cents']
+            : null;
+
+        return [
+            'home_cents'    => $homePrice,
+            'escales_cents' => $escalesPrice,
+            'has_fallback'  => $homePrice === null && $escalesPrice === null,
+        ];
+    }
 }

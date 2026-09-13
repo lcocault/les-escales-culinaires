@@ -127,6 +127,7 @@ include ROOT_DIR . '/templates/header.php';
                         $startTime = (string) ($gs['start_time'] ?? '');
                         $endTime = (string) ($gs['end_time'] ?? '');
                         $slotDescription = (string) ($gs['description'] ?? '');
+                        $priceData = WorkshopAgenda::resolveGroupSlotPrices($gs);
                     ?>
                     <article class="session-card">
                         <div class="session-card__header">
@@ -146,15 +147,13 @@ include ROOT_DIR . '/templates/header.php';
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
                                     ⏰ <?= e(substr($startTime, 0, 5)) ?> – <?= e(substr($endTime, 0, 5)) ?>
-                                    <?php $hasHomePrice = isset($gs['price_per_child_home_cents']) && (int) $gs['price_per_child_home_cents'] > 0; ?>
-                                    <?php $hasEscalesPrice = isset($gs['price_per_child_escales_cents']) && (int) $gs['price_per_child_escales_cents'] > 0; ?>
-                                    <?php if ($hasHomePrice): ?>
-                                        &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
+                                    <?php if ($priceData['home_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $priceData['home_cents'])) ?> / enfant
                                     <?php endif; ?>
-                                    <?php if ($hasEscalesPrice): ?>
-                                        &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?> / enfant
+                                    <?php if ($priceData['escales_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $priceData['escales_cents'])) ?> / enfant
                                     <?php endif; ?>
-                                    <?php if (!$hasHomePrice && !$hasEscalesPrice): ?>
+                                    <?php if ($priceData['has_fallback']): ?>
                                         &nbsp;|&nbsp; 💶 Tarif communiqué sur demande
                                     <?php endif; ?>
                                 </p>

@@ -61,4 +61,32 @@ class WorkshopAgendaTest extends TestCase
         $this->assertCount(1, WorkshopAgenda::filterItems($items, 'regular'));
         $this->assertCount(2, WorkshopAgenda::filterItems($items, 'group_private'));
     }
+
+    public function testResolveGroupSlotPricesSupportsThreeDisplayBranches(): void
+    {
+        $homeOnly = WorkshopAgenda::resolveGroupSlotPrices([
+            'price_per_child_home_cents' => 3200,
+            'price_per_child_escales_cents' => 0,
+        ]);
+        $escalesOnly = WorkshopAgenda::resolveGroupSlotPrices([
+            'price_per_child_home_cents' => 0,
+            'price_per_child_escales_cents' => 3500,
+        ]);
+        $fallback = WorkshopAgenda::resolveGroupSlotPrices([
+            'price_per_child_home_cents' => 0,
+            'price_per_child_escales_cents' => 0,
+        ]);
+
+        $this->assertSame(3200, $homeOnly['home_cents']);
+        $this->assertNull($homeOnly['escales_cents']);
+        $this->assertFalse($homeOnly['has_fallback']);
+
+        $this->assertNull($escalesOnly['home_cents']);
+        $this->assertSame(3500, $escalesOnly['escales_cents']);
+        $this->assertFalse($escalesOnly['has_fallback']);
+
+        $this->assertNull($fallback['home_cents']);
+        $this->assertNull($fallback['escales_cents']);
+        $this->assertTrue($fallback['has_fallback']);
+    }
 }
