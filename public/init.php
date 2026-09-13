@@ -108,6 +108,46 @@ function ageCategoryLabel(string $category): string
     return $labels[$category] ?? $category;
 }
 
+// Helper: build workshop agenda items from regular/private sessions and group slots
+function buildWorkshopAgendaItems(array $sessions, array $groupSlots): array
+{
+    $allItems = [];
+    foreach ($sessions as $session) {
+        $allItems[] = [
+            'type'    => 'session',
+            'segment' => !empty($session['is_private']) ? 'group_private' : 'regular',
+            'date'    => $session['session_date'],
+            'time'    => $session['start_time'],
+            'data'    => $session,
+        ];
+    }
+    foreach ($groupSlots as $slot) {
+        $allItems[] = [
+            'type'    => 'group_slot',
+            'segment' => 'group_private',
+            'date'    => $slot['slot_date'],
+            'time'    => $slot['start_time'],
+            'data'    => $slot,
+        ];
+    }
+
+    usort($allItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
+    return $allItems;
+}
+
+// Helper: filter workshop agenda items by segment (all|regular|group_private)
+function filterWorkshopAgendaItems(array $items, string $selectedFilter): array
+{
+    if ($selectedFilter === 'all') {
+        return $items;
+    }
+
+    return array_values(array_filter(
+        $items,
+        static fn(array $item): bool => $item['segment'] === $selectedFilter
+    ));
+}
+
 // Helper: returns the number of items in the current shop cart (session-based).
 function shopCartCount(): int
 {

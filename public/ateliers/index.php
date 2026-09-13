@@ -23,49 +23,8 @@ $selectedFilter = isset($_GET['type']) ? (string) $_GET['type'] : 'all';
 if (!array_key_exists($selectedFilter, $filterLabels)) {
     $selectedFilter = 'all';
 }
-
-if (!function_exists('buildWorkshopAgendaItems')) {
-    function buildWorkshopAgendaItems(array $sessions, array $groupSlots): array
-    {
-        $allItems = [];
-        foreach ($sessions as $s) {
-            $allItems[] = [
-                'type'    => 'session',
-                'segment' => !empty($s['is_private']) ? 'group_private' : 'regular',
-                'date'    => $s['session_date'],
-                'time'    => $s['start_time'],
-                'data'    => $s,
-            ];
-        }
-        foreach ($groupSlots as $gs) {
-            $allItems[] = [
-                'type'    => 'group_slot',
-                'segment' => 'group_private',
-                'date'    => $gs['slot_date'],
-                'time'    => $gs['start_time'],
-                'data'    => $gs,
-            ];
-        }
-        usort($allItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
-
-        return $allItems;
-    }
-}
-
-if (!function_exists('filterWorkshopAgendaItems')) {
-    function filterWorkshopAgendaItems(array $items, string $selectedFilter): array
-    {
-        if ($selectedFilter === 'all') {
-            return $items;
-        }
-
-        return array_values(array_filter(
-            $items,
-            static fn(array $item): bool => $item['segment'] === $selectedFilter
-        ));
-    }
-}
-
+$minGroupChildren = (int) GroupBookingModel::MIN_CHILDREN;
+$maxGroupChildren = (int) GroupBookingModel::MAX_CHILDREN;
 $allItems = buildWorkshopAgendaItems($sessions, $groupSlots);
 $visibleItems = filterWorkshopAgendaItems($allItems, $selectedFilter);
 
@@ -171,7 +130,7 @@ include ROOT_DIR . '/templates/header.php';
                         </div>
                         <div class="session-card__body">
                             <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
-                            <p class="session-card__age">👶 <?= GroupBookingModel::MIN_CHILDREN ?>–<?= GroupBookingModel::MAX_CHILDREN ?> enfants</p>
+                            <p class="session-card__age">👶 <?= e((string) $minGroupChildren) ?>–<?= e((string) $maxGroupChildren) ?> enfants</p>
                             <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($segmentLabels['group_private']) ?></span></p>
                             <?php if ($gs['description']): ?>
                                 <p class="session-card__summary"><?= e($gs['description']) ?></p>

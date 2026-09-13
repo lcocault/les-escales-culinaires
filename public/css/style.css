@@ -179,6 +179,10 @@ a:hover { text-decoration: underline; }
 .session-filter__legend { font-weight: 600; margin-right: .25rem; }
 .session-filter__option { display: inline-flex; align-items: center; }
 .session-filter__option input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.session-filter__option input[type="radio"]:focus-visible + span {
+    outline: 3px solid var(--color-yellow-dark);
+    outline-offset: 2px;
+}
 
 /* ─── Session cards ─── */
 .sessions-grid {
