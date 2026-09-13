@@ -141,8 +141,8 @@ include ROOT_DIR . '/templates/header.php';
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
                                     ⏰ <?= e(substr($gs['start_time'], 0, 5)) ?> – <?= e(substr($gs['end_time'], 0, 5)) ?>
-                                    <?php $hasHomePrice = isset($gs['price_per_child_home_cents']) && $gs['price_per_child_home_cents'] !== null; ?>
-                                    <?php $hasEscalesPrice = isset($gs['price_per_child_escales_cents']) && $gs['price_per_child_escales_cents'] !== null; ?>
+                                    <?php $hasHomePrice = isset($gs['price_per_child_home_cents']) && (int) $gs['price_per_child_home_cents'] > 0; ?>
+                                    <?php $hasEscalesPrice = isset($gs['price_per_child_escales_cents']) && (int) $gs['price_per_child_escales_cents'] > 0; ?>
                                     <?php if ($hasHomePrice): ?>
                                         &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
                                     <?php endif; ?>

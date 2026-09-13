@@ -131,7 +131,14 @@ function buildWorkshopAgendaItems(array $sessions, array $groupSlots): array
         ];
     }
 
-    usort($allItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
+    usort($allItems, static function (array $a, array $b): int {
+        $dateComparison = strcmp((string) $a['date'], (string) $b['date']);
+        if ($dateComparison !== 0) {
+            return $dateComparison;
+        }
+
+        return strcmp((string) $a['time'], (string) $b['time']);
+    });
     return $allItems;
 }
 
