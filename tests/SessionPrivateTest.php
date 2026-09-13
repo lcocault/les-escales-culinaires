@@ -217,6 +217,36 @@ class SessionPrivateTest extends TestCase
         $this->assertSame(42, $capturedParams[':user_id']);
     }
 
+    public function testGetUpcomingForCatalogIncludesPrivateSessions(): void
+    {
+        $capturedSql = '';
+        $rows = [
+            ['id' => 1, 'title' => 'Atelier ouvert', 'is_private' => false],
+            ['id' => 2, 'title' => 'Atelier privé', 'is_private' => true],
+        ];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('fetchAll')->willReturn($rows);
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('query')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new SessionModel();
+        $result = $model->getUpcomingForCatalog();
+
+        $this->assertStringContainsString('is_private', $capturedSql);
+        $this->assertStringNotContainsString('AND is_private = FALSE', $capturedSql);
+        $this->assertCount(2, $result);
+        $this->assertFalse((bool) $result[0]['is_private']);
+        $this->assertTrue((bool) $result[1]['is_private']);
+    }
+
     // -------------------------------------------------------------------------
     // SessionModel::isUserAllowed()
     // -------------------------------------------------------------------------

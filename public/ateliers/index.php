@@ -5,7 +5,28 @@ require_once __DIR__ . '/../init.php';
 $pageTitle      = 'Séances à venir';
 $navContext     = 'sessions';
 $sessionModel   = new SessionModel();
-$sessions       = $sessionModel->getUpcoming(Auth::isLoggedIn() ? Auth::currentUserId() : null);
+$slotModel      = new GroupSessionSlotModel();
+$sessions       = $sessionModel->getUpcomingForCatalog();
+$groupSlots     = $slotModel->getUpcoming();
+
+$filterLabels = [
+    'all'           => 'Toutes',
+    'regular'       => 'Séances régulières',
+    'group_private' => 'Séances groupe / privées',
+];
+$segmentLabels = [
+    'regular'       => 'Séance régulière',
+    'group_private' => 'Séance groupe / privée',
+];
+
+$selectedFilter = isset($_GET['type']) ? (string) $_GET['type'] : 'all';
+if (!array_key_exists($selectedFilter, $filterLabels)) {
+    $selectedFilter = 'all';
+}
+$minGroupChildren = (int) GroupBookingModel::MIN_CHILDREN;
+$maxGroupChildren = (int) GroupBookingModel::MAX_CHILDREN;
+$allItems = WorkshopAgenda::buildItems($sessions, $groupSlots);
+$visibleItems = WorkshopAgenda::filterItems($allItems, $selectedFilter);
 
 include ROOT_DIR . '/templates/header.php';
 ?>
@@ -29,51 +50,133 @@ include ROOT_DIR . '/templates/header.php';
         <a href="<?= APP_BASE_URL ?>/all-ratings.php">⭐ Voir tous les avis des participants →</a>
     </p>
 
-    <?php if (empty($sessions)): ?>
+    <form method="get" class="session-filter" aria-label="Filtrer les types de séances">
+        <fieldset class="session-filter__fieldset">
+            <legend class="session-filter__legend">Type de séances</legend>
+            <?php foreach ($filterLabels as $filterValue => $filterLabel): ?>
+                <label class="session-filter__option">
+                    <input type="radio" name="type" value="<?= e($filterValue) ?>" <?= $selectedFilter === $filterValue ? 'checked' : '' ?> onchange="this.form.submit()">
+                    <span class="btn btn--sm <?= $selectedFilter === $filterValue ? 'btn--primary' : 'btn--secondary' ?>"><?= e($filterLabel) ?></span>
+                </label>
+            <?php endforeach; ?>
+        </fieldset>
+        <button type="submit" class="btn btn--secondary btn--sm">Appliquer</button>
+    </form>
+
+    <?php if (empty($visibleItems)): ?>
         <p class="text-center mt-3" style="color:var(--color-muted)">
-            Aucune séance prévue pour le moment. Revenez bientôt !
+            <?= empty($allItems)
+                ? 'Aucune séance prévue pour le moment. Revenez bientôt !'
+                : 'Aucune séance ne correspond au filtre sélectionné.' ?>
         </p>
     <?php else: ?>
         <div class="sessions-grid">
-            <?php foreach ($sessions as $s): ?>
-                <?php
-                    $seats = (int) $s['remaining_seats'];
-                    if ($seats === 0) {
-                        $badgeClass = 'badge--seats-full';
-                        $badgeText  = 'Complet';
-                    } elseif ($seats <= 3) {
-                        $badgeClass = 'badge--seats-low';
-                        $badgeText  = $seats . ' place' . ($seats > 1 ? 's' : '') . ' restante' . ($seats > 1 ? 's' : '');
-                    } else {
-                        $badgeClass = 'badge--seats-ok';
-                        $badgeText  = $seats . ' places disponibles';
-                    }
-                ?>
-                <article class="session-card">
-                    <div class="session-card__header">
-                        <p class="session-card__date"><?= e(formatDate($s['session_date'])) ?></p>
-                        <h2 class="session-card__title"><?= e($s['title']) ?><?php if (!empty($s['is_private'])): ?> <span style="font-size:.75em;vertical-align:middle">🔒</span><?php endif; ?></h2>
-                    </div>
-                    <div class="session-card__body">
-                        <p class="session-card__theme">🎨 <?= e($s['theme']) ?></p>
-                        <p class="session-card__age">👶 <?= e(ageCategoryLabel($s['age_category'] ?? '6-12')) ?></p>
-                        <?php if ($s['summary']): ?>
-                            <p class="session-card__summary"><?= e($s['summary']) ?></p>
-                        <?php endif; ?>
-                    </div>
-                    <div class="session-card__footer">
-                        <div>
-                            <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
-                            <p class="session-card__meta mt-1">
-                                ⏰ <?= e(substr($s['start_time'], 0, 5)) ?> – <?= e(substr($s['end_time'], 0, 5)) ?>
-                                &nbsp;|&nbsp; 💶 <?= e(formatPrice((int) $s['price_cents'])) ?>
-                            </p>
+            <?php foreach ($visibleItems as $item): ?>
+                <?php if ($item['type'] === 'session'): $s = $item['data']; ?>
+                    <?php
+                        $seats = (int) $s['remaining_seats'];
+                        if ($seats === 0) {
+                            $badgeClass = 'badge--seats-full';
+                            $badgeText  = 'Complet';
+                        } elseif ($seats <= 3) {
+                            $badgeClass = 'badge--seats-low';
+                            $badgeText  = $seats . ' place' . ($seats > 1 ? 's' : '') . ' restante' . ($seats > 1 ? 's' : '');
+                        } else {
+                            $badgeClass = 'badge--seats-ok';
+                            $badgeText  = $seats . ' places disponibles';
+                        }
+                    ?>
+                    <article class="session-card">
+                        <div class="session-card__header">
+                            <p class="session-card__date"><?= e(formatDate($s['session_date'])) ?></p>
+                            <h2 class="session-card__title"><?= e($s['title']) ?><?php if (!empty($s['is_private'])): ?> <span style="font-size:.75em;vertical-align:middle">🔒</span><?php endif; ?></h2>
                         </div>
-                        <a href="<?= APP_BASE_URL ?>/ateliers/seance.php?id=<?= (int) $s['id'] ?>" class="btn btn--primary btn--sm">
-                            Détails →
-                        </a>
-                    </div>
-                </article>
+                        <div class="session-card__body">
+                            <p class="session-card__theme">🎨 <?= e($s['theme']) ?></p>
+                            <p class="session-card__age">👶 <?= e(ageCategoryLabel($s['age_category'] ?? '6-12')) ?></p>
+                            <p class="session-card__type"><span class="badge <?= !empty($s['is_private']) ? 'badge--type-group-private' : 'badge--type-regular' ?>"><?= e(!empty($s['is_private']) ? $segmentLabels['group_private'] : $segmentLabels['regular']) ?></span></p>
+                            <?php if ($s['summary']): ?>
+                                <p class="session-card__summary"><?= e($s['summary']) ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="session-card__footer">
+                            <div>
+                                <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
+                                <p class="session-card__meta mt-1">
+                                    ⏰ <?= e(substr($s['start_time'], 0, 5)) ?> – <?= e(substr($s['end_time'], 0, 5)) ?>
+                                    &nbsp;|&nbsp; 💶 <?= e(formatPrice((int) $s['price_cents'])) ?>
+                                </p>
+                            </div>
+                            <a href="<?= APP_BASE_URL ?>/ateliers/seance.php?id=<?= (int) $s['id'] ?>" class="btn btn--primary btn--sm">
+                                Détails →
+                            </a>
+                        </div>
+                    </article>
+                <?php elseif ($item['type'] === 'group_slot'): $gs = $item['data']; ?>
+                    <?php
+                        $groups = (int) ($gs['remaining_groups'] ?? 0);
+                        if ($groups === 0) {
+                            $badgeClass = 'badge--seats-full';
+                            $badgeText  = 'Complet';
+                        } else {
+                            $badgeClass = 'badge--seats-ok';
+                            $badgeText  = $groups > 1 ? $groups . ' créneaux disponibles' : $groups . ' créneau disponible';
+                        }
+                        $groupTitle = (string) ($gs['title'] ?? 'Séance de groupe');
+                        $slotDate = (string) ($gs['slot_date'] ?? '');
+                        $startTime = (string) ($gs['start_time'] ?? '');
+                        $endTime = (string) ($gs['end_time'] ?? '');
+                        $slotDescription = (string) ($gs['description'] ?? '');
+                        $priceData = WorkshopAgenda::resolveGroupSlotPrices($gs);
+                        $slotId = (int) ($gs['id'] ?? 0);
+                    ?>
+                    <article class="session-card">
+                        <div class="session-card__header">
+                            <p class="session-card__date"><?= e(formatDate($slotDate)) ?></p>
+                            <h2 class="session-card__title"><?= e($groupTitle) ?> <span style="font-size:.75em;vertical-align:middle">🎂</span></h2>
+                        </div>
+                        <div class="session-card__body">
+                            <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
+                            <p class="session-card__age">👥 Groupe : <?= e((string) $minGroupChildren) ?>–<?= e((string) $maxGroupChildren) ?> enfants</p>
+                            <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($segmentLabels['group_private']) ?></span></p>
+                            <?php if ($slotDescription !== ''): ?>
+                                <p class="session-card__summary"><?= e($slotDescription) ?></p>
+                            <?php endif; ?>
+                        </div>
+                        <div class="session-card__footer">
+                            <div>
+                                <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
+                                <p class="session-card__meta mt-1">
+                                    <?php $displayStartTime = $startTime !== '' ? substr($startTime, 0, 5) : ''; ?>
+                                    <?php $displayEndTime = $endTime !== '' ? substr($endTime, 0, 5) : ''; ?>
+                                    <?php if ($displayStartTime !== '' && $displayEndTime !== ''): ?>
+                                        ⏰ <?= e($displayStartTime) ?> – <?= e($displayEndTime) ?>
+                                    <?php elseif ($displayStartTime !== ''): ?>
+                                        ⏰ Début à <?= e($displayStartTime) ?>
+                                    <?php else: ?>
+                                        ⏰ Horaire à confirmer
+                                    <?php endif; ?>
+                                    <?php if ($priceData['home_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $priceData['home_cents'])) ?> / enfant
+                                    <?php endif; ?>
+                                    <?php if ($priceData['escales_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $priceData['escales_cents'])) ?> / enfant
+                                    <?php endif; ?>
+                                    <?php if ($priceData['has_fallback']): ?>
+                                        &nbsp;|&nbsp; 💶 Tarif communiqué sur demande
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                            <?php if ($slotId > 0): ?>
+                                <a href="<?= APP_BASE_URL ?>/ateliers/group-session-slot.php?id=<?= $slotId ?>" class="btn btn--primary btn--sm">
+                                    Détails →
+                                </a>
+                            <?php else: ?>
+                                <span class="session-card__meta">Détails indisponibles</span>
+                            <?php endif; ?>
+                        </div>
+                    </article>
+                <?php endif; ?>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>

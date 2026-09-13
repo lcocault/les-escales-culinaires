@@ -21,6 +21,7 @@ require_once ROOT_DIR . '/src/ShopProductModel.php';
 require_once ROOT_DIR . '/src/ShopOrderModel.php';
 require_once ROOT_DIR . '/src/GroupBookingModel.php';
 require_once ROOT_DIR . '/src/GroupSessionSlotModel.php';
+require_once ROOT_DIR . '/src/WorkshopAgenda.php';
 
 // Helper: escape output (accepts null, returns empty string for null)
 function e(?string $value): string

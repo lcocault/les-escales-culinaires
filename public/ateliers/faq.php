@@ -139,6 +139,21 @@ include ROOT_DIR . '/templates/header.php';
         </details>
 
         <details class="faq-item">
+            <summary class="faq-item__question">Comment fonctionnent les séances de groupe / privées ?</summary>
+            <div class="faq-item__answer">
+                <p>
+                    Les séances de groupe / privées sont des ateliers réservés à un seul groupe
+                    (par exemple pour un anniversaire). Vous choisissez un créneau, puis nous validons
+                    ensemble l'organisation et le menu selon les besoins des enfants.
+                </p>
+                <p>
+                    Exemples de thèmes simples à proposer :
+                    <strong>gâteau au chocolat</strong> ou <strong>atelier crêpes</strong>.
+                </p>
+            </div>
+        </details>
+
+        <details class="faq-item">
             <summary class="faq-item__question">Les allergies alimentaires sont-elles prises en compte ?</summary>
             <div class="faq-item__answer">
                 <p>
