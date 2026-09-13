@@ -132,7 +132,7 @@ include ROOT_DIR . '/templates/header.php';
                             <h2 class="session-card__title"><?= e($gs['title']) ?> <span style="font-size:.75em;vertical-align:middle">🎂</span></h2>
                         </div>
                         <div class="session-card__body">
-                            <p class="session-card__theme">🎉 Atelier de groupe – anniversaire</p>
+                            <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
                             <p class="session-card__age">👶 <?= GroupBookingModel::MIN_CHILDREN ?>–<?= GroupBookingModel::MAX_CHILDREN ?> enfants</p>
                             <p class="session-card__type"><span class="badge badge--type-group-private">Séance de groupe / privée</span></p>
                             <?php if ($gs['description']): ?>
@@ -144,7 +144,8 @@ include ROOT_DIR . '/templates/header.php';
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
                                     ⏰ <?= e(substr($gs['start_time'], 0, 5)) ?> – <?= e(substr($gs['end_time'], 0, 5)) ?>
-                                    &nbsp;|&nbsp; 💶 <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> – <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?>/enfant
+                                    &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
+                                    &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?> / enfant
                                 </p>
                             </div>
                             <a href="<?= APP_BASE_URL ?>/group-session-slot.php?id=<?= (int) $gs['id'] ?>" class="btn btn--primary btn--sm">
