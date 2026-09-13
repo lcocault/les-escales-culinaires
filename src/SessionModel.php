@@ -38,6 +38,20 @@ class SessionModel
         return $stmt->fetchAll();
     }
 
+    // Upcoming sessions for the public catalog (includes regular and private sessions)
+    public function getUpcomingForCatalog(): array
+    {
+        $stmt = $this->db->query(
+            "SELECT id, title, theme, session_date, start_time, end_time,
+                    max_attendees, remaining_seats, price_cents, summary, age_category, is_private
+             FROM sessions
+             WHERE session_date >= CURRENT_DATE AND deleted_at IS NULL AND status != 'cancelled'
+             ORDER BY session_date ASC, start_time ASC"
+        );
+
+        return $stmt->fetchAll();
+    }
+
     // Active (pending) sessions for admin – chronological order, with registered count
     public function getAll(): array
     {
