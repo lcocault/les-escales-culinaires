@@ -128,6 +128,7 @@ include ROOT_DIR . '/templates/header.php';
                         $endTime = (string) ($gs['end_time'] ?? '');
                         $slotDescription = (string) ($gs['description'] ?? '');
                         $priceData = WorkshopAgenda::resolveGroupSlotPrices($gs);
+                        $slotId = (int) ($gs['id'] ?? 0);
                     ?>
                     <article class="session-card">
                         <div class="session-card__header">
@@ -166,9 +167,13 @@ include ROOT_DIR . '/templates/header.php';
                                     <?php endif; ?>
                                 </p>
                             </div>
-                            <a href="<?= APP_BASE_URL ?>/ateliers/group-session-slot.php?id=<?= (int) ($gs['id'] ?? 0) ?>" class="btn btn--primary btn--sm">
-                                Détails →
-                            </a>
+                            <?php if ($slotId > 0): ?>
+                                <a href="<?= APP_BASE_URL ?>/ateliers/group-session-slot.php?id=<?= $slotId ?>" class="btn btn--primary btn--sm">
+                                    Détails →
+                                </a>
+                            <?php else: ?>
+                                <span class="session-card__meta">Détails indisponibles</span>
+                            <?php endif; ?>
                         </div>
                     </article>
                 <?php endif; ?>
