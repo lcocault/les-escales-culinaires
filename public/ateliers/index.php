@@ -146,7 +146,15 @@ include ROOT_DIR . '/templates/header.php';
                             <div>
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
-                                    ⏰ <?= e(substr($startTime, 0, 5)) ?> – <?= e(substr($endTime, 0, 5)) ?>
+                                    <?php $displayStartTime = $startTime !== '' ? substr($startTime, 0, 5) : ''; ?>
+                                    <?php $displayEndTime = $endTime !== '' ? substr($endTime, 0, 5) : ''; ?>
+                                    <?php if ($displayStartTime !== '' && $displayEndTime !== ''): ?>
+                                        ⏰ <?= e($displayStartTime) ?> – <?= e($displayEndTime) ?>
+                                    <?php elseif ($displayStartTime !== ''): ?>
+                                        ⏰ Début à <?= e($displayStartTime) ?>
+                                    <?php else: ?>
+                                        ⏰ Horaire à confirmer
+                                    <?php endif; ?>
                                     <?php if ($priceData['home_cents'] !== null): ?>
                                         &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $priceData['home_cents'])) ?> / enfant
                                     <?php endif; ?>
@@ -158,7 +166,7 @@ include ROOT_DIR . '/templates/header.php';
                                     <?php endif; ?>
                                 </p>
                             </div>
-                            <a href="<?= APP_BASE_URL ?>/group-session-slot.php?id=<?= (int) ($gs['id'] ?? 0) ?>" class="btn btn--primary btn--sm">
+                            <a href="<?= APP_BASE_URL ?>/ateliers/group-session-slot.php?id=<?= (int) ($gs['id'] ?? 0) ?>" class="btn btn--primary btn--sm">
                                 Détails →
                             </a>
                         </div>
