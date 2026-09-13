@@ -14,31 +14,37 @@ if (!in_array($selectedFilter, ['all', 'regular', 'group_private'], true)) {
     $selectedFilter = 'all';
 }
 
-$allItems = [];
-foreach ($sessions as $s) {
-    $allItems[] = [
-        'type'    => 'session',
-        'segment' => !empty($s['is_private']) ? 'group_private' : 'regular',
-        'date'    => $s['session_date'],
-        'time'    => $s['start_time'],
-        'data'    => $s,
-    ];
-}
-foreach ($groupSlots as $gs) {
-    $allItems[] = [
-        'type'    => 'group_slot',
-        'segment' => 'group_private',
-        'date'    => $gs['slot_date'],
-        'time'    => $gs['start_time'],
-        'data'    => $gs,
-    ];
-}
+$buildAgendaItems = static function (array $sessions, array $groupSlots, string $selectedFilter): array {
+    $allItems = [];
+    foreach ($sessions as $s) {
+        $allItems[] = [
+            'type'    => 'session',
+            'segment' => !empty($s['is_private']) ? 'group_private' : 'regular',
+            'date'    => $s['session_date'],
+            'time'    => $s['start_time'],
+            'data'    => $s,
+        ];
+    }
+    foreach ($groupSlots as $gs) {
+        $allItems[] = [
+            'type'    => 'group_slot',
+            'segment' => 'group_private',
+            'date'    => $gs['slot_date'],
+            'time'    => $gs['start_time'],
+            'data'    => $gs,
+        ];
+    }
 
-$visibleItems = array_values(array_filter(
-    $allItems,
-    static fn(array $item): bool => $selectedFilter === 'all' || $item['segment'] === $selectedFilter
-));
-usort($visibleItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
+    $visibleItems = array_values(array_filter(
+        $allItems,
+        static fn(array $item): bool => $selectedFilter === 'all' || $item['segment'] === $selectedFilter
+    ));
+    usort($visibleItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
+
+    return $visibleItems;
+};
+
+$visibleItems = $buildAgendaItems($sessions, $groupSlots, $selectedFilter);
 
 include ROOT_DIR . '/templates/header.php';
 ?>
@@ -144,8 +150,12 @@ include ROOT_DIR . '/templates/header.php';
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
                                     ⏰ <?= e(substr($gs['start_time'], 0, 5)) ?> – <?= e(substr($gs['end_time'], 0, 5)) ?>
-                                    &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
-                                    &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?> / enfant
+                                    <?php if (isset($gs['price_per_child_home_cents']) && $gs['price_per_child_home_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
+                                    <?php endif; ?>
+                                    <?php if (isset($gs['price_per_child_escales_cents']) && $gs['price_per_child_escales_cents'] !== null): ?>
+                                        &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?> / enfant
+                                    <?php endif; ?>
                                 </p>
                             </div>
                             <a href="<?= APP_BASE_URL ?>/group-session-slot.php?id=<?= (int) $gs['id'] ?>" class="btn btn--primary btn--sm">
