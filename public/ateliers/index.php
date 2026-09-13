@@ -9,44 +9,65 @@ $slotModel      = new GroupSessionSlotModel();
 $sessions       = $sessionModel->getUpcomingForCatalog();
 $groupSlots     = $slotModel->getUpcoming();
 
+$filterLabels = [
+    'all'           => 'Toutes',
+    'regular'       => 'Séances régulières',
+    'group_private' => 'Séances groupe / privées',
+];
+$segmentLabels = [
+    'regular'       => 'Séance régulière',
+    'group_private' => 'Séance groupe / privée',
+];
+
 $selectedFilter = isset($_GET['type']) ? (string) $_GET['type'] : 'all';
-if (!in_array($selectedFilter, ['all', 'regular', 'group_private'], true)) {
+if (!array_key_exists($selectedFilter, $filterLabels)) {
     $selectedFilter = 'all';
 }
-$groupPrivateFilterLabel = 'Séances groupe / privées';
-$groupPrivateCardLabel   = 'Séance de groupe / privée';
 
-$buildAgendaItems = static function (array $sessions, array $groupSlots, string $selectedFilter): array {
-    $allItems = [];
-    foreach ($sessions as $s) {
-        $allItems[] = [
-            'type'    => 'session',
-            'segment' => !empty($s['is_private']) ? 'group_private' : 'regular',
-            'date'    => $s['session_date'],
-            'time'    => $s['start_time'],
-            'data'    => $s,
-        ];
+if (!function_exists('buildWorkshopAgendaItems')) {
+    function buildWorkshopAgendaItems(array $sessions, array $groupSlots): array
+    {
+        $allItems = [];
+        foreach ($sessions as $s) {
+            $allItems[] = [
+                'type'    => 'session',
+                'segment' => !empty($s['is_private']) ? 'group_private' : 'regular',
+                'date'    => $s['session_date'],
+                'time'    => $s['start_time'],
+                'data'    => $s,
+            ];
+        }
+        foreach ($groupSlots as $gs) {
+            $allItems[] = [
+                'type'    => 'group_slot',
+                'segment' => 'group_private',
+                'date'    => $gs['slot_date'],
+                'time'    => $gs['start_time'],
+                'data'    => $gs,
+            ];
+        }
+        usort($allItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
+
+        return $allItems;
     }
-    foreach ($groupSlots as $gs) {
-        $allItems[] = [
-            'type'    => 'group_slot',
-            'segment' => 'group_private',
-            'date'    => $gs['slot_date'],
-            'time'    => $gs['start_time'],
-            'data'    => $gs,
-        ];
+}
+
+if (!function_exists('filterWorkshopAgendaItems')) {
+    function filterWorkshopAgendaItems(array $items, string $selectedFilter): array
+    {
+        if ($selectedFilter === 'all') {
+            return $items;
+        }
+
+        return array_values(array_filter(
+            $items,
+            static fn(array $item): bool => $item['segment'] === $selectedFilter
+        ));
     }
+}
 
-    $visibleItems = array_values(array_filter(
-        $allItems,
-        static fn(array $item): bool => $selectedFilter === 'all' || $item['segment'] === $selectedFilter
-    ));
-    usort($visibleItems, fn($a, $b) => strcmp($a['date'] . $a['time'], $b['date'] . $b['time']));
-
-    return $visibleItems;
-};
-
-$visibleItems = $buildAgendaItems($sessions, $groupSlots, $selectedFilter);
+$allItems = buildWorkshopAgendaItems($sessions, $groupSlots);
+$visibleItems = filterWorkshopAgendaItems($allItems, $selectedFilter);
 
 include ROOT_DIR . '/templates/header.php';
 ?>
@@ -70,15 +91,24 @@ include ROOT_DIR . '/templates/header.php';
         <a href="<?= APP_BASE_URL ?>/all-ratings.php">⭐ Voir tous les avis des participants →</a>
     </p>
 
-    <nav class="session-filter" aria-label="Filtrer les types de séances">
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=all" class="btn btn--sm <?= $selectedFilter === 'all' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'all' ? 'aria-current="page"' : '' ?>>Toutes</a>
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=regular" class="btn btn--sm <?= $selectedFilter === 'regular' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'regular' ? 'aria-current="page"' : '' ?>>Séances régulières</a>
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=group_private" class="btn btn--sm <?= $selectedFilter === 'group_private' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'group_private' ? 'aria-current="page"' : '' ?>><?= e($groupPrivateFilterLabel) ?></a>
-    </nav>
+    <form method="get" class="session-filter" aria-label="Filtrer les types de séances">
+        <fieldset class="session-filter__fieldset">
+            <legend class="session-filter__legend">Type de séances</legend>
+            <?php foreach ($filterLabels as $filterValue => $filterLabel): ?>
+                <label class="session-filter__option">
+                    <input type="radio" name="type" value="<?= e($filterValue) ?>" <?= $selectedFilter === $filterValue ? 'checked' : '' ?> onchange="this.form.submit()">
+                    <span class="btn btn--sm <?= $selectedFilter === $filterValue ? 'btn--primary' : 'btn--secondary' ?>"><?= e($filterLabel) ?></span>
+                </label>
+            <?php endforeach; ?>
+        </fieldset>
+        <noscript><button type="submit" class="btn btn--secondary btn--sm">Filtrer</button></noscript>
+    </form>
 
     <?php if (empty($visibleItems)): ?>
         <p class="text-center mt-3" style="color:var(--color-muted)">
-            Aucune séance prévue pour le moment. Revenez bientôt !
+            <?= empty($allItems)
+                ? 'Aucune séance prévue pour le moment. Revenez bientôt !'
+                : 'Aucune séance ne correspond au filtre sélectionné.' ?>
         </p>
     <?php else: ?>
         <div class="sessions-grid">
@@ -105,7 +135,7 @@ include ROOT_DIR . '/templates/header.php';
                         <div class="session-card__body">
                             <p class="session-card__theme">🎨 <?= e($s['theme']) ?></p>
                             <p class="session-card__age">👶 <?= e(ageCategoryLabel($s['age_category'] ?? '6-12')) ?></p>
-                            <p class="session-card__type"><span class="badge <?= !empty($s['is_private']) ? 'badge--type-group-private' : 'badge--type-regular' ?>"><?= !empty($s['is_private']) ? 'Séance privée' : 'Séance régulière' ?></span></p>
+                            <p class="session-card__type"><span class="badge <?= !empty($s['is_private']) ? 'badge--type-group-private' : 'badge--type-regular' ?>"><?= e(!empty($s['is_private']) ? $segmentLabels['group_private'] : $segmentLabels['regular']) ?></span></p>
                             <?php if ($s['summary']): ?>
                                 <p class="session-card__summary"><?= e($s['summary']) ?></p>
                             <?php endif; ?>
@@ -142,7 +172,7 @@ include ROOT_DIR . '/templates/header.php';
                         <div class="session-card__body">
                             <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
                             <p class="session-card__age">👶 <?= GroupBookingModel::MIN_CHILDREN ?>–<?= GroupBookingModel::MAX_CHILDREN ?> enfants</p>
-                            <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($groupPrivateCardLabel) ?></span></p>
+                            <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($segmentLabels['group_private']) ?></span></p>
                             <?php if ($gs['description']): ?>
                                 <p class="session-card__summary"><?= e($gs['description']) ?></p>
                             <?php endif; ?>
