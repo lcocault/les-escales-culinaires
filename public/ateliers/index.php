@@ -60,7 +60,7 @@ include ROOT_DIR . '/templates/header.php';
                 </label>
             <?php endforeach; ?>
         </fieldset>
-        <noscript><button type="submit" class="btn btn--secondary btn--sm">Filtrer</button></noscript>
+        <button type="submit" class="btn btn--secondary btn--sm">Appliquer</button>
     </form>
 
     <?php if (empty($visibleItems)): ?>
@@ -114,7 +114,7 @@ include ROOT_DIR . '/templates/header.php';
                     </article>
                 <?php elseif ($item['type'] === 'group_slot'): $gs = $item['data']; ?>
                     <?php
-                        $groups = (int) $gs['remaining_groups'];
+                        $groups = (int) ($gs['remaining_groups'] ?? 0);
                         if ($groups === 0) {
                             $badgeClass = 'badge--seats-full';
                             $badgeText  = 'Complet';
@@ -122,25 +122,30 @@ include ROOT_DIR . '/templates/header.php';
                             $badgeClass = 'badge--seats-ok';
                             $badgeText  = $groups > 1 ? $groups . ' créneaux disponibles' : $groups . ' créneau disponible';
                         }
+                        $groupTitle = (string) ($gs['title'] ?? 'Séance de groupe');
+                        $slotDate = (string) ($gs['slot_date'] ?? '');
+                        $startTime = (string) ($gs['start_time'] ?? '');
+                        $endTime = (string) ($gs['end_time'] ?? '');
+                        $slotDescription = (string) ($gs['description'] ?? '');
                     ?>
                     <article class="session-card">
                         <div class="session-card__header">
-                            <p class="session-card__date"><?= e(formatDate($gs['slot_date'])) ?></p>
-                            <h2 class="session-card__title"><?= e($gs['title']) ?> <span style="font-size:.75em;vertical-align:middle">🎂</span></h2>
+                            <p class="session-card__date"><?= e(formatDate($slotDate)) ?></p>
+                            <h2 class="session-card__title"><?= e($groupTitle) ?> <span style="font-size:.75em;vertical-align:middle">🎂</span></h2>
                         </div>
                         <div class="session-card__body">
                             <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
-                            <p class="session-card__age">👶 <?= e((string) $minGroupChildren) ?>–<?= e((string) $maxGroupChildren) ?> enfants</p>
+                            <p class="session-card__age">👥 Groupe : <?= e((string) $minGroupChildren) ?>–<?= e((string) $maxGroupChildren) ?> enfants</p>
                             <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($segmentLabels['group_private']) ?></span></p>
-                            <?php if ($gs['description']): ?>
-                                <p class="session-card__summary"><?= e($gs['description']) ?></p>
+                            <?php if ($slotDescription !== ''): ?>
+                                <p class="session-card__summary"><?= e($slotDescription) ?></p>
                             <?php endif; ?>
                         </div>
                         <div class="session-card__footer">
                             <div>
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
-                                    ⏰ <?= e(substr($gs['start_time'], 0, 5)) ?> – <?= e(substr($gs['end_time'], 0, 5)) ?>
+                                    ⏰ <?= e(substr($startTime, 0, 5)) ?> – <?= e(substr($endTime, 0, 5)) ?>
                                     <?php $hasHomePrice = isset($gs['price_per_child_home_cents']) && (int) $gs['price_per_child_home_cents'] > 0; ?>
                                     <?php $hasEscalesPrice = isset($gs['price_per_child_escales_cents']) && (int) $gs['price_per_child_escales_cents'] > 0; ?>
                                     <?php if ($hasHomePrice): ?>
@@ -154,7 +159,7 @@ include ROOT_DIR . '/templates/header.php';
                                     <?php endif; ?>
                                 </p>
                             </div>
-                            <a href="<?= APP_BASE_URL ?>/group-session-slot.php?id=<?= (int) $gs['id'] ?>" class="btn btn--primary btn--sm">
+                            <a href="<?= APP_BASE_URL ?>/group-session-slot.php?id=<?= (int) ($gs['id'] ?? 0) ?>" class="btn btn--primary btn--sm">
                                 Détails →
                             </a>
                         </div>
