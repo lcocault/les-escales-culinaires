@@ -175,7 +175,16 @@ a:hover { text-decoration: underline; }
 .hero .btn--secondary:hover { background: rgba(255,255,255,.25); }
 .hero__actions { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin-top: 1rem; }
 .session-filter { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.session-filter__options { display: flex; gap: .5rem; flex-wrap: wrap; padding: 0; margin: 0; }
+.session-filter__fieldset {
+    border: none;
+    box-shadow: none;
+    outline: 0;
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 0;
+}
 .session-filter__legend { font-weight: 600; margin-right: .25rem; }
 .session-filter__option { display: inline-flex; align-items: center; }
 .session-filter__option input[type="radio"] {

@@ -51,15 +51,15 @@ include ROOT_DIR . '/templates/header.php';
     </p>
 
     <form method="get" class="session-filter" aria-label="Filtrer les types de séances">
-        <div class="session-filter__options" role="radiogroup" aria-label="Type de séances">
-            <span class="session-filter__legend">Type de séances</span>
+        <fieldset class="session-filter__fieldset">
+            <legend class="session-filter__legend">Type de séances</legend>
             <?php foreach ($filterLabels as $filterValue => $filterLabel): ?>
                 <label class="session-filter__option">
                     <input type="radio" name="type" value="<?= e($filterValue) ?>" <?= $selectedFilter === $filterValue ? 'checked' : '' ?> onchange="this.form.submit()">
                     <span class="btn btn--sm <?= $selectedFilter === $filterValue ? 'btn--primary' : 'btn--secondary' ?>"><?= e($filterLabel) ?></span>
                 </label>
             <?php endforeach; ?>
-        </div>
+        </fieldset>
         <button type="submit" class="btn btn--secondary btn--sm">Appliquer</button>
     </form>
 
