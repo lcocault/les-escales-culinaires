@@ -13,6 +13,8 @@ $selectedFilter = isset($_GET['type']) ? (string) $_GET['type'] : 'all';
 if (!in_array($selectedFilter, ['all', 'regular', 'group_private'], true)) {
     $selectedFilter = 'all';
 }
+$groupPrivateFilterLabel = 'Séances groupe / privées';
+$groupPrivateCardLabel   = 'Séance de groupe / privée';
 
 $buildAgendaItems = static function (array $sessions, array $groupSlots, string $selectedFilter): array {
     $allItems = [];
@@ -71,7 +73,7 @@ include ROOT_DIR . '/templates/header.php';
     <nav class="session-filter" aria-label="Filtrer les types de séances">
         <a href="<?= APP_BASE_URL ?>/ateliers/?type=all" class="btn btn--sm <?= $selectedFilter === 'all' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'all' ? 'aria-current="page"' : '' ?>>Toutes</a>
         <a href="<?= APP_BASE_URL ?>/ateliers/?type=regular" class="btn btn--sm <?= $selectedFilter === 'regular' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'regular' ? 'aria-current="page"' : '' ?>>Séances régulières</a>
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=group_private" class="btn btn--sm <?= $selectedFilter === 'group_private' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'group_private' ? 'aria-current="page"' : '' ?>>Séances groupe / privées</a>
+        <a href="<?= APP_BASE_URL ?>/ateliers/?type=group_private" class="btn btn--sm <?= $selectedFilter === 'group_private' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'group_private' ? 'aria-current="page"' : '' ?>><?= e($groupPrivateFilterLabel) ?></a>
     </nav>
 
     <?php if (empty($visibleItems)): ?>
@@ -140,7 +142,7 @@ include ROOT_DIR . '/templates/header.php';
                         <div class="session-card__body">
                             <p class="session-card__theme">🎉 Atelier de groupe / privé</p>
                             <p class="session-card__age">👶 <?= GroupBookingModel::MIN_CHILDREN ?>–<?= GroupBookingModel::MAX_CHILDREN ?> enfants</p>
-                            <p class="session-card__type"><span class="badge badge--type-group-private">Séance de groupe / privée</span></p>
+                            <p class="session-card__type"><span class="badge badge--type-group-private"><?= e($groupPrivateCardLabel) ?></span></p>
                             <?php if ($gs['description']): ?>
                                 <p class="session-card__summary"><?= e($gs['description']) ?></p>
                             <?php endif; ?>
@@ -150,11 +152,16 @@ include ROOT_DIR . '/templates/header.php';
                                 <span class="badge <?= $badgeClass ?>"><?= e($badgeText) ?></span>
                                 <p class="session-card__meta mt-1">
                                     ⏰ <?= e(substr($gs['start_time'], 0, 5)) ?> – <?= e(substr($gs['end_time'], 0, 5)) ?>
-                                    <?php if (isset($gs['price_per_child_home_cents']) && $gs['price_per_child_home_cents'] !== null): ?>
+                                    <?php $hasHomePrice = isset($gs['price_per_child_home_cents']) && $gs['price_per_child_home_cents'] !== null; ?>
+                                    <?php $hasEscalesPrice = isset($gs['price_per_child_escales_cents']) && $gs['price_per_child_escales_cents'] !== null; ?>
+                                    <?php if ($hasHomePrice): ?>
                                         &nbsp;|&nbsp; 💶 Domicile : <?= e(formatPrice((int) $gs['price_per_child_home_cents'])) ?> / enfant
                                     <?php endif; ?>
-                                    <?php if (isset($gs['price_per_child_escales_cents']) && $gs['price_per_child_escales_cents'] !== null): ?>
+                                    <?php if ($hasEscalesPrice): ?>
                                         &nbsp;|&nbsp; 📍 Escales : <?= e(formatPrice((int) $gs['price_per_child_escales_cents'])) ?> / enfant
+                                    <?php endif; ?>
+                                    <?php if (!$hasHomePrice && !$hasEscalesPrice): ?>
+                                        &nbsp;|&nbsp; 💶 Tarif communiqué sur demande
                                     <?php endif; ?>
                                 </p>
                             </div>
