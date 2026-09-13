@@ -69,9 +69,9 @@ include ROOT_DIR . '/templates/header.php';
     </p>
 
     <nav class="session-filter" aria-label="Filtrer les types de séances">
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=all" class="btn btn--sm <?= $selectedFilter === 'all' ? 'btn--primary' : 'btn--secondary' ?>">Toutes</a>
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=regular" class="btn btn--sm <?= $selectedFilter === 'regular' ? 'btn--primary' : 'btn--secondary' ?>">Séances régulières</a>
-        <a href="<?= APP_BASE_URL ?>/ateliers/?type=group_private" class="btn btn--sm <?= $selectedFilter === 'group_private' ? 'btn--primary' : 'btn--secondary' ?>">Séances groupe / privées</a>
+        <a href="<?= APP_BASE_URL ?>/ateliers/?type=all" class="btn btn--sm <?= $selectedFilter === 'all' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'all' ? 'aria-current="page"' : '' ?>>Toutes</a>
+        <a href="<?= APP_BASE_URL ?>/ateliers/?type=regular" class="btn btn--sm <?= $selectedFilter === 'regular' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'regular' ? 'aria-current="page"' : '' ?>>Séances régulières</a>
+        <a href="<?= APP_BASE_URL ?>/ateliers/?type=group_private" class="btn btn--sm <?= $selectedFilter === 'group_private' ? 'btn--primary' : 'btn--secondary' ?>" <?= $selectedFilter === 'group_private' ? 'aria-current="page"' : '' ?>>Séances groupe / privées</a>
     </nav>
 
     <?php if (empty($visibleItems)): ?>

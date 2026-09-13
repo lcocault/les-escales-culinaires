@@ -220,9 +220,13 @@ class SessionPrivateTest extends TestCase
     public function testGetUpcomingForCatalogIncludesPrivateSessions(): void
     {
         $capturedSql = '';
+        $rows = [
+            ['id' => 1, 'title' => 'Atelier ouvert', 'is_private' => false],
+            ['id' => 2, 'title' => 'Atelier privé', 'is_private' => true],
+        ];
 
         $stmt = $this->createMock(PDOStatement::class);
-        $stmt->method('fetchAll')->willReturn([]);
+        $stmt->method('fetchAll')->willReturn($rows);
 
         $pdo = $this->createMock(PDO::class);
         $pdo->method('query')
@@ -234,10 +238,13 @@ class SessionPrivateTest extends TestCase
         $this->injectPdo($pdo);
 
         $model = new SessionModel();
-        $model->getUpcomingForCatalog();
+        $result = $model->getUpcomingForCatalog();
 
         $this->assertStringContainsString('is_private', $capturedSql);
         $this->assertStringNotContainsString('AND is_private = FALSE', $capturedSql);
+        $this->assertCount(2, $result);
+        $this->assertFalse((bool) $result[0]['is_private']);
+        $this->assertTrue((bool) $result[1]['is_private']);
     }
 
     // -------------------------------------------------------------------------
