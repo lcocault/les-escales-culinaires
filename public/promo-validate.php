@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 
 $code      = strtoupper(trim($_GET['code'] ?? ''));
 $sessionId = (int) ($_GET['session_id'] ?? 0);
+$childCount = max(1, (int) ($_GET['child_count'] ?? 1));
 
 if ($code === '' || $sessionId <= 0) {
     echo json_encode(['valid' => false, 'message' => 'Paramètres manquants.']);
@@ -23,6 +24,10 @@ if ($promo === null) {
 
 echo json_encode([
     'valid'          => true,
-    'discount_cents' => (int) $promo['discount_cents'],
+    'discount_cents' => (int) $promo['discount_cents'] * (
+        $promo['max_uses'] === null
+            ? $childCount
+            : min($childCount, max(0, (int) $promo['max_uses'] - (int) $promo['used_count']))
+    ),
     'message'        => 'Code promotionnel valide.',
 ]);
