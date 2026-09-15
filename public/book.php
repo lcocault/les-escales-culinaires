@@ -84,6 +84,18 @@ function childPriceCents(int $basePrice, int $position): int
     return $position === 1 ? $basePrice : max(0, $basePrice - $extraDiscount);
 }
 
+/** Number of children for whom this promo can still be applied. */
+function promoApplicableChildren(array $promo, int $nbChildren): int
+{
+    $requested = max(1, $nbChildren);
+    if ($promo['max_uses'] === null) {
+        return $requested;
+    }
+
+    $remaining = max(0, (int) $promo['max_uses'] - (int) $promo['used_count']);
+    return min($requested, $remaining);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     Auth::verifyCsrf();
 
@@ -145,7 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         for ($i = 1; $i <= $nbChildren; $i++) {
             $childrenTotal += childPriceCents($basePrice, $i);
         }
-        $discountCents = $appliedPromo ? min((int) $appliedPromo['discount_cents'], $childrenTotal) : 0;
+        $promoChildren = $appliedPromo ? promoApplicableChildren($appliedPromo, $nbChildren) : 0;
+        $discountCents = $appliedPromo
+            ? min((int) $appliedPromo['discount_cents'] * $promoChildren, $childrenTotal)
+            : 0;
         $finalPrice    = $childrenTotal - $discountCents;
 
         if ($action === 'check_promo') {
@@ -193,8 +208,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Increment promo code usage counter
-        if ($appliedPromo) {
-            (new PromoCodeModel())->incrementUsedCount((int) $appliedPromo['id']);
+        if ($appliedPromo && $promoChildren > 0) {
+            (new PromoCodeModel())->incrementUsedCount((int) $appliedPromo['id'], $promoChildren);
         }
 
         if ($useCredit) {
@@ -373,7 +388,11 @@ $availablePacks = array_filter($sessionPacks, fn($p) => (int) $p['is_available']
                     for ($i = 1; $i <= $nbChildrenDisplay; $i++) {
                         $childrenTotalDisplay += childPriceCents($basePrice, $i);
                     }
-                    $discountCentsDisplay = min((int) $appliedPromo['discount_cents'], $childrenTotalDisplay);
+                    $promoChildrenDisplay = promoApplicableChildren($appliedPromo, $nbChildrenDisplay);
+                    $discountCentsDisplay = min(
+                        (int) $appliedPromo['discount_cents'] * $promoChildrenDisplay,
+                        $childrenTotalDisplay
+                    );
                     $finalPriceDisplay    = $childrenTotalDisplay - $discountCentsDisplay;
                 ?>
                 <div class="flash flash--success" style="margin-top:.5rem" id="promo-result">
@@ -401,7 +420,12 @@ $availablePacks = array_filter($sessionPacks, fn($p) => (int) $p['is_available']
                     $displayTotal += childPriceCents($basePrice, $i);
                 }
                 if ($appliedPromo) {
-                    $displayTotal = max(0, $displayTotal - min((int) $appliedPromo['discount_cents'], $displayTotal));
+                    $promoChildrenDisplay = promoApplicableChildren($appliedPromo, $nbChildrenDisplay);
+                    $promoDiscountDisplay = min(
+                        (int) $appliedPromo['discount_cents'] * $promoChildrenDisplay,
+                        $displayTotal
+                    );
+                    $displayTotal = max(0, $displayTotal - $promoDiscountDisplay);
                 }
             ?>
             <div class="mt-3">
@@ -575,7 +599,7 @@ $availablePacks = array_filter($sessionPacks, fn($p) => (int) $p['is_available']
             return;
         }
 
-        fetch(validateUrl + '?code=' + encodeURIComponent(code) + '&session_id=' + sessionId)
+        fetch(validateUrl + '?code=' + encodeURIComponent(code) + '&session_id=' + sessionId + '&child_count=' + countChildren())
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 promoResult.style.display = '';

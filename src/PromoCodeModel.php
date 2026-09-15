@@ -95,12 +95,14 @@ class PromoCodeModel
         $stmt->execute([':id' => $id]);
     }
 
-    public function incrementUsedCount(int $id): void
+    public function incrementUsedCount(int $id, int $quantity = 1): void
     {
+        $quantity = max(1, $quantity);
+
         $stmt = $this->db->prepare(
-            'UPDATE promo_codes SET used_count = used_count + 1 WHERE id = :id'
+            'UPDATE promo_codes SET used_count = used_count + :qty WHERE id = :id'
         );
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':qty' => $quantity, ':id' => $id]);
     }
 
     /**
