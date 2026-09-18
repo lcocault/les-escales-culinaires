@@ -292,9 +292,14 @@ class PromoCodeModelTest extends TestCase
     public function testIncrementUsedCountExecutesUpdate(): void
     {
         $capturedSql = '';
+        $capturedParams = [];
 
         $stmt = $this->createMock(PDOStatement::class);
-        $stmt->method('execute')->willReturn(true);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
 
         $pdo = $this->createMock(PDO::class);
         $pdo->method('prepare')
@@ -306,9 +311,11 @@ class PromoCodeModelTest extends TestCase
         $this->injectPdo($pdo);
 
         $model = new PromoCodeModel();
-        $model->incrementUsedCount(4);
+        $model->incrementUsedCount(4, 2);
 
         $this->assertStringContainsStringIgnoringCase('UPDATE promo_codes', $capturedSql);
         $this->assertStringContainsStringIgnoringCase('used_count', $capturedSql);
+        $this->assertStringContainsString(':qty', $capturedSql);
+        $this->assertSame(2, $capturedParams[':qty']);
     }
 }
