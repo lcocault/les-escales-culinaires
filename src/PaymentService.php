@@ -426,7 +426,17 @@ class PaymentService
         }
 
         foreach ($order->getTenders() ?? [] as $tender) {
-            if ($tender->getPaymentId() !== null) {
+            $paymentId = $tender->getPaymentId();
+            if ($paymentId === null) {
+                continue;
+            }
+
+            $paymentResponse = $client->payments->get(
+                new GetPaymentsRequest(['paymentId' => $paymentId])
+            );
+            $payment = $paymentResponse->getPayment();
+
+            if ($payment !== null && strtoupper((string) $payment->getStatus()) === 'COMPLETED') {
                 return 'sq_order_' . $orderId;
             }
         }
