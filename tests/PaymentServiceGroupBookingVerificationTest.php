@@ -235,6 +235,20 @@ namespace {
          * @runInSeparateProcess
          * @preserveGlobalState disabled
          */
+        public function testVerifyStripeGroupBookingPaymentReturnsNullInDemoMode(): void
+        {
+            define('PAYMENT_PROVIDER', 'stripe');
+            define('STRIPE_SECRET_KEY', 'sk_test_...');
+
+            $result = PaymentService::verifyGroupBookingPayment(12, 'cs_demo');
+
+            $this->assertNull($result);
+        }
+
+        /**
+         * @runInSeparateProcess
+         * @preserveGlobalState disabled
+         */
         public function testVerifySquareGroupBookingPaymentSucceedsForCompletedPayment(): void
         {
             define('PAYMENT_PROVIDER', 'square');
