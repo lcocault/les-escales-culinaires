@@ -18,6 +18,15 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE group_booking_requests
-    ADD CONSTRAINT group_booking_requests_status_check
-    CHECK (status IN ('pending', 'awaiting_payment', 'confirmed', 'cancelled'));
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'group_booking_requests_status_check'
+    ) THEN
+        ALTER TABLE group_booking_requests
+            ADD CONSTRAINT group_booking_requests_status_check
+            CHECK (status IN ('pending', 'awaiting_payment', 'confirmed', 'cancelled'));
+    END IF;
+END $$;
