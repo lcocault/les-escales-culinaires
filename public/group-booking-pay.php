@@ -33,7 +33,11 @@ try {
     $checkout = PaymentService::createGroupBookingCheckoutUrl($id, $itemName, $amountCents, 'eur');
 
     if (!empty($checkout['squareOrderId'])) {
-        $model->storePaymentReference($id, 'sq_order_' . $checkout['squareOrderId']);
+        $squareOrderId = (string) $checkout['squareOrderId'];
+        $model->storePaymentReference(
+            $id,
+            str_starts_with($squareOrderId, 'sq_order_') ? $squareOrderId : 'sq_order_' . $squareOrderId
+        );
     }
 
     header('Location: ' . $checkout['url']);
