@@ -21,9 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $newStatus  = trim($_POST['status']      ?? '');
     $adminNotes = trim($_POST['admin_notes'] ?? '');
 
-    $allowedStatuses = $request['status'] === 'confirmed'
-        ? ['confirmed', 'cancelled']
-        : ['pending', 'awaiting_payment', 'cancelled'];
+    $allowedStatuses = match ($request['status']) {
+        'awaiting_payment' => ['awaiting_payment', 'cancelled'],
+        'confirmed'        => ['confirmed', 'cancelled'],
+        default            => ['pending', 'awaiting_payment', 'cancelled'],
+    };
 
     if (!in_array($newStatus, $allowedStatuses, true)) {
         $errors[] = 'Statut invalide.';
@@ -61,16 +63,21 @@ $unitPrice      = $request['location_type'] === 'home'
 $locationLabel  = $request['location_type'] === 'home'
     ? '🏠 Domicile'
     : '📍 Escales Culinaires (36 rue Boieldieu, 31300 Toulouse)';
-$statusOptions = $request['status'] === 'confirmed'
-    ? [
+$statusOptions = match ($request['status']) {
+    'awaiting_payment' => [
+        'awaiting_payment' => '💳 Paiement en attente',
+        'cancelled'        => '❌ Annulée',
+    ],
+    'confirmed' => [
         'confirmed' => '✅ Réglée et confirmée',
         'cancelled' => '❌ Annulée',
-    ]
-    : [
+    ],
+    default => [
         'pending'          => '⏳ En attente',
         'awaiting_payment' => '💳 Paiement en attente',
         'cancelled'        => '❌ Annulée',
-    ];
+    ],
+};
 
 $pageTitle = 'Demande anniversaire #' . $id;
 include ROOT_DIR . '/templates/header.php';
