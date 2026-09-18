@@ -151,6 +151,7 @@ class GroupBookingModelTest extends TestCase
                 $capturedParams = $params;
                 return true;
             });
+        $stmt->method('rowCount')->willReturn(1);
         $stmt->method('fetchColumn')->willReturn(42);
 
         $pdo = $this->createMock(PDO::class);
@@ -311,11 +312,12 @@ class GroupBookingModelTest extends TestCase
         $this->injectPdo($pdo);
 
         $model = new GroupBookingModel();
-        $model->confirmPayment(8, 'paid_group_8');
+        $result = $model->confirmPayment(8, 'paid_group_8');
 
         $this->assertStringContainsString("status = 'confirmed'", $capturedSql);
         $this->assertStringContainsString("status = 'awaiting_payment'", $capturedSql);
         $this->assertSame(8, $capturedParams[':id']);
         $this->assertSame('paid_group_8', $capturedParams[':payment_intent_id']);
+        $this->assertTrue($result);
     }
 }

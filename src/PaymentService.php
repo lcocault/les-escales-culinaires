@@ -138,6 +138,30 @@ class PaymentService
     }
 
     /**
+     * Verifies that a group booking payment succeeded with the configured provider.
+     *
+     * @param int         $groupBookingId          The group booking request ID expected in provider metadata.
+     * @param string|null $providerReference       Provider callback reference (Stripe checkout session ID, etc.).
+     * @param string|null $storedPaymentReference  Previously stored provider reference (used for Square order IDs).
+     * @return string|null Verified payment reference to persist, or null if verification fails.
+     */
+    public static function verifyGroupBookingPayment(
+        int $groupBookingId,
+        ?string $providerReference,
+        ?string $storedPaymentReference = null
+    ): ?string {
+        $provider = defined('PAYMENT_PROVIDER') ? strtolower(PAYMENT_PROVIDER) : 'stripe';
+
+        return match ($provider) {
+            'stripe' => self::verifyStripeGroupBookingPayment($groupBookingId, $providerReference),
+            'square' => self::verifySquareGroupBookingPayment($storedPaymentReference ?: $providerReference),
+            default  => throw new RuntimeException(
+                "Unsupported PAYMENT_PROVIDER \"$provider\". Must be \"stripe\" or \"square\"."
+            ),
+        };
+    }
+
+    /**
      * Returns true when the given payment reference identifies a real (non-demo) payment
      * that requires an actual refund via the provider API.
      */
@@ -280,6 +304,38 @@ class PaymentService
         return ['url' => $link->getUrl(), 'squareOrderId' => $link->getOrderId()];
     }
 
+    private static function verifyStripeGroupBookingPayment(
+        int $groupBookingId,
+        ?string $providerReference
+    ): ?string {
+        if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '' || STRIPE_SECRET_KEY === 'sk_test_...') {
+            return null;
+        }
+
+        $sessionId = trim((string) $providerReference);
+        if ($sessionId === '') {
+            return null;
+        }
+
+        \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
+        $session = \Stripe\Checkout\Session::retrieve($sessionId);
+
+        if (($session->payment_status ?? null) !== 'paid') {
+            return null;
+        }
+
+        $metadata = $session->metadata ?? null;
+        $metadataGroupBookingId = is_object($metadata)
+            ? (int) ($metadata->group_booking_id ?? 0)
+            : (int) ($metadata['group_booking_id'] ?? 0);
+
+        if ($metadataGroupBookingId !== $groupBookingId) {
+            return null;
+        }
+
+        return $sessionId;
+    }
+
     private static function squareGroupBookingCheckoutUrl(
         int $groupBookingId,
         string $itemName,
@@ -326,6 +382,56 @@ class PaymentService
         }
 
         return ['url' => $link->getUrl(), 'squareOrderId' => $link->getOrderId()];
+    }
+
+    private static function verifySquareGroupBookingPayment(?string $paymentReference): ?string
+    {
+        if (!defined('SQUARE_ACCESS_TOKEN') || SQUARE_ACCESS_TOKEN === '' || SQUARE_ACCESS_TOKEN === 'EAAAl...') {
+            return null;
+        }
+
+        $rawReference = trim((string) $paymentReference);
+        if ($rawReference === '') {
+            return null;
+        }
+
+        $orderId = str_starts_with($rawReference, 'sq_order_')
+            ? substr($rawReference, strlen('sq_order_'))
+            : $rawReference;
+
+        if ($orderId === '') {
+            return null;
+        }
+
+        $environment = (defined('SQUARE_ENVIRONMENT') && SQUARE_ENVIRONMENT === 'production')
+            ? SquareEnvironments::Production->value
+            : SquareEnvironments::Sandbox->value;
+
+        $client = new SquareClient(
+            token: SQUARE_ACCESS_TOKEN,
+            options: ['baseUrl' => $environment],
+        );
+
+        $orderResponse = $client->orders->get(
+            new GetOrdersRequest(['orderId' => $orderId])
+        );
+        $order = $orderResponse->getOrder();
+
+        if ($order === null) {
+            return null;
+        }
+
+        if (strtoupper((string) $order->getState()) === 'COMPLETED') {
+            return 'sq_order_' . $orderId;
+        }
+
+        foreach ($order->getTenders() ?? [] as $tender) {
+            if ($tender->getPaymentId() !== null) {
+                return 'sq_order_' . $orderId;
+            }
+        }
+
+        return null;
     }
 
     // -------------------------------------------------------------------------

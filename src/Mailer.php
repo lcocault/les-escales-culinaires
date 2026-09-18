@@ -258,14 +258,9 @@ class Mailer
 
     private static function groupBookingEstimatedPriceCents(array $request): int
     {
-        $homePrice = isset($request['price_per_child_home_cents'])
-            ? (int) $request['price_per_child_home_cents']
-            : 3000;
-        $escalesPrice = isset($request['price_per_child_escales_cents'])
-            ? (int) $request['price_per_child_escales_cents']
-            : 3500;
+        require_once __DIR__ . '/GroupBookingModel.php';
 
-        return ((int) $request['nb_children']) * ($request['location_type'] === 'home' ? $homePrice : $escalesPrice);
+        return GroupBookingModel::estimatePriceFromRequest($request);
     }
 
     public static function sendRatingReminder(

@@ -182,7 +182,7 @@ class GroupBookingModel
         ]);
     }
 
-    public function confirmPayment(int $id, string $paymentReference): void
+    public function confirmPayment(int $id, string $paymentReference): bool
     {
         $stmt = $this->db->prepare(
             "UPDATE group_booking_requests
@@ -195,6 +195,8 @@ class GroupBookingModel
             ':id'                => $id,
             ':payment_intent_id' => $paymentReference,
         ]);
+
+        return $stmt->rowCount() > 0;
     }
 
     public function countPending(): int

@@ -33,21 +33,36 @@ if ($isGroupBooking) {
         $preStoredRef = (string) ($request['payment_intent_id'] ?? '');
         $paymentRef = $isDemo
             ? 'demo_group_' . $groupBookingId
-            : ($preStoredRef !== ''
-                ? $preStoredRef
-                : ($_GET['payment_intent'] ?? $_GET['referenceId'] ?? 'paid_group_' . $groupBookingId));
+            : PaymentService::verifyGroupBookingPayment(
+                $groupBookingId,
+                $_GET['payment_intent'] ?? $_GET['referenceId'] ?? null,
+                $preStoredRef
+            );
 
-        $groupBookingModel->confirmPayment($groupBookingId, $paymentRef);
+        if ($paymentRef === null) {
+            flash('error', 'Le paiement n\'a pas pu être vérifié. Merci de réessayer ou de contacter notre équipe.');
+            header('Location: ' . APP_BASE_URL . '/my-group-bookings.php');
+            exit;
+        }
+
+        $wasConfirmed = $groupBookingModel->confirmPayment($groupBookingId, $paymentRef);
 
         $userModel = new UserModel();
         $user      = $userModel->findById(Auth::currentUserId());
 
-        if ($user) {
+        if ($wasConfirmed && $user) {
             $updatedRequest = array_merge($request, [
                 'status'            => 'confirmed',
                 'payment_intent_id' => $paymentRef,
             ]);
             Mailer::sendGroupBookingStatusUpdate($user, $updatedRequest);
+        } elseif (!$wasConfirmed) {
+            $request = $groupBookingModel->findById($groupBookingId);
+            if (!$request || $request['status'] !== 'confirmed') {
+                flash('error', 'Le paiement a été reçu mais la confirmation automatique a échoué. Merci de contacter notre équipe.');
+                header('Location: ' . APP_BASE_URL . '/my-group-bookings.php');
+                exit;
+            }
         }
     }
 
