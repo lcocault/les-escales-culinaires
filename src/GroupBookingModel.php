@@ -28,9 +28,13 @@ class GroupBookingModel
     public function findById(int $id): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT r.*, u.first_name, u.last_name, u.email
+            'SELECT r.*, u.first_name, u.last_name, u.email,
+                    s.title AS slot_title,
+                    s.price_per_child_home_cents,
+                    s.price_per_child_escales_cents
              FROM group_booking_requests r
              JOIN users u ON u.id = r.user_id
+             LEFT JOIN group_session_slots s ON s.id = r.group_session_slot_id
              WHERE r.id = :id AND r.deleted_at IS NULL'
         );
         $stmt->execute([':id' => $id]);
@@ -41,9 +45,13 @@ class GroupBookingModel
     public function getByUser(int $userId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT * FROM group_booking_requests
-             WHERE user_id = :uid AND deleted_at IS NULL
-             ORDER BY created_at DESC'
+            'SELECT r.*, s.title AS slot_title,
+                    s.price_per_child_home_cents,
+                    s.price_per_child_escales_cents
+             FROM group_booking_requests r
+             LEFT JOIN group_session_slots s ON s.id = r.group_session_slot_id
+             WHERE r.user_id = :uid AND r.deleted_at IS NULL
+            ORDER BY r.created_at DESC'
         );
         $stmt->execute([':uid' => $userId]);
         return $stmt->fetchAll();
@@ -52,9 +60,13 @@ class GroupBookingModel
     public function getAll(): array
     {
         $stmt = $this->db->query(
-            'SELECT r.*, u.first_name, u.last_name, u.email
+            'SELECT r.*, u.first_name, u.last_name, u.email,
+                    s.title AS slot_title,
+                    s.price_per_child_home_cents,
+                    s.price_per_child_escales_cents
              FROM group_booking_requests r
              JOIN users u ON u.id = r.user_id
+             LEFT JOIN group_session_slots s ON s.id = r.group_session_slot_id
              WHERE r.deleted_at IS NULL
              ORDER BY r.created_at DESC'
         );
@@ -64,9 +76,13 @@ class GroupBookingModel
     public function getPending(): array
     {
         $stmt = $this->db->query(
-            "SELECT r.*, u.first_name, u.last_name, u.email
+            "SELECT r.*, u.first_name, u.last_name, u.email,
+                    s.title AS slot_title,
+                    s.price_per_child_home_cents,
+                    s.price_per_child_escales_cents
              FROM group_booking_requests r
              JOIN users u ON u.id = r.user_id
+             LEFT JOIN group_session_slots s ON s.id = r.group_session_slot_id
              WHERE r.deleted_at IS NULL AND r.status = 'pending'
              ORDER BY r.preferred_date ASC, r.created_at ASC"
         );
@@ -141,6 +157,44 @@ class GroupBookingModel
         $escalesPrice = $priceEscalesCents ?? self::PRICE_ESCALES_CENTS;
         $unitPrice    = $locationType === 'home' ? $homePrice : $escalesPrice;
         return $nbChildren * $unitPrice;
+    }
+
+    public static function estimatePriceFromRequest(array $request): int
+    {
+        return self::estimatePrice(
+            (int) $request['nb_children'],
+            (string) $request['location_type'],
+            isset($request['price_per_child_home_cents']) ? (int) $request['price_per_child_home_cents'] : null,
+            isset($request['price_per_child_escales_cents']) ? (int) $request['price_per_child_escales_cents'] : null
+        );
+    }
+
+    public function storePaymentReference(int $id, string $paymentReference): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE group_booking_requests
+             SET payment_intent_id = :payment_intent_id
+             WHERE id = :id AND deleted_at IS NULL'
+        );
+        $stmt->execute([
+            ':id'                => $id,
+            ':payment_intent_id' => $paymentReference,
+        ]);
+    }
+
+    public function confirmPayment(int $id, string $paymentReference): void
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE group_booking_requests
+             SET status = 'confirmed',
+                 payment_intent_id = :payment_intent_id,
+                 paid_at = NOW()
+             WHERE id = :id AND deleted_at IS NULL AND status = 'awaiting_payment'"
+        );
+        $stmt->execute([
+            ':id'                => $id,
+            ':payment_intent_id' => $paymentReference,
+        ]);
     }
 
     public function countPending(): int

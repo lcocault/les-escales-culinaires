@@ -94,6 +94,46 @@ class PaymentServiceTest extends TestCase
         $this->assertNull($result['squareOrderId']);
     }
 
+    public function testStripeGroupBookingDemoFallbackWhenKeyIsPlaceholder(): void
+    {
+        define('PAYMENT_PROVIDER', 'stripe');
+        define('STRIPE_SECRET_KEY', 'sk_test_...');
+
+        $result = PaymentService::createGroupBookingCheckoutUrl(14, 'Atelier anniversaire', 18000, 'eur');
+
+        $this->assertIsArray($result);
+        $this->assertStringContainsString('/payment_success.php', $result['url']);
+        $this->assertStringContainsString('group_booking_id=14', $result['url']);
+        $this->assertStringContainsString('_demo=1', $result['url']);
+        $this->assertNull($result['squareOrderId']);
+    }
+
+    public function testSquareGroupBookingDemoFallbackWhenTokenIsPlaceholder(): void
+    {
+        define('PAYMENT_PROVIDER', 'square');
+        define('SQUARE_ACCESS_TOKEN', 'EAAAl...');
+        define('SQUARE_LOCATION_ID', 'test_loc');
+        define('SQUARE_ENVIRONMENT', 'sandbox');
+
+        $result = PaymentService::createGroupBookingCheckoutUrl(18, 'Atelier anniversaire', 21000, 'eur');
+
+        $this->assertIsArray($result);
+        $this->assertStringContainsString('/payment_success.php', $result['url']);
+        $this->assertStringContainsString('group_booking_id=18', $result['url']);
+        $this->assertStringContainsString('_demo=1', $result['url']);
+        $this->assertNull($result['squareOrderId']);
+    }
+
+    public function testGroupBookingUnsupportedProviderThrowsRuntimeException(): void
+    {
+        define('PAYMENT_PROVIDER', 'paypal');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/Unsupported PAYMENT_PROVIDER/');
+
+        PaymentService::createGroupBookingCheckoutUrl(3, 'Atelier anniversaire', 12000, 'eur');
+    }
+
     // -------------------------------------------------------------------------
     // Refund – Stripe demo mode (placeholder key → silent no-op)
     // -------------------------------------------------------------------------

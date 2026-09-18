@@ -43,6 +43,28 @@ class PaymentService
     }
 
     /**
+     * Creates a checkout URL for a private/group session request.
+     *
+     * @return array{url: string, squareOrderId: ?string}
+     */
+    public static function createGroupBookingCheckoutUrl(
+        int $groupBookingId,
+        string $itemName,
+        int $amountCents,
+        string $currency
+    ): array {
+        $provider = defined('PAYMENT_PROVIDER') ? strtolower(PAYMENT_PROVIDER) : 'stripe';
+
+        return match ($provider) {
+            'stripe' => self::stripeGroupBookingCheckoutUrl($groupBookingId, $itemName, $amountCents, $currency),
+            'square' => self::squareGroupBookingCheckoutUrl($groupBookingId, $itemName, $amountCents, $currency),
+            default  => throw new RuntimeException(
+                "Unsupported PAYMENT_PROVIDER \"$provider\". Must be \"stripe\" or \"square\"."
+            ),
+        };
+    }
+
+    /**
      * Creates a checkout URL for a basket containing multiple bookings.
      *
      * @param array  $lineItems    Array of ['name' => string, 'amount_cents' => int] entries.
@@ -173,6 +195,41 @@ class PaymentService
         return ['url' => $session->url, 'squareOrderId' => null];
     }
 
+    private static function stripeGroupBookingCheckoutUrl(
+        int $groupBookingId,
+        string $itemName,
+        int $amountCents,
+        string $currency
+    ): array {
+        if (!defined('STRIPE_SECRET_KEY') || STRIPE_SECRET_KEY === '' || STRIPE_SECRET_KEY === 'sk_test_...') {
+            return [
+                'url' => APP_BASE_URL . '/payment_success.php?group_booking_id=' . $groupBookingId . '&_demo=1',
+                'squareOrderId' => null,
+            ];
+        }
+
+        \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
+
+        $session = \Stripe\Checkout\Session::create([
+            'payment_method_types' => ['card'],
+            'line_items'           => [[
+                'price_data' => [
+                    'currency'     => strtolower($currency),
+                    'product_data' => ['name' => $itemName],
+                    'unit_amount'  => $amountCents,
+                ],
+                'quantity' => 1,
+            ]],
+            'mode'        => 'payment',
+            'success_url' => APP_BASE_URL . '/payment_success.php?group_booking_id=' . $groupBookingId
+                             . '&payment_intent={CHECKOUT_SESSION_ID}',
+            'cancel_url'  => APP_BASE_URL . '/payment_cancel.php?group_booking_id=' . $groupBookingId,
+            'metadata'    => ['group_booking_id' => $groupBookingId],
+        ]);
+
+        return ['url' => $session->url, 'squareOrderId' => null];
+    }
+
     // -------------------------------------------------------------------------
     // Square
     // -------------------------------------------------------------------------
@@ -210,6 +267,54 @@ class PaymentService
             ]),
             'checkoutOptions' => new \Square\Types\CheckoutOptions([
                 'redirectUrl' => APP_BASE_URL . '/payment_success.php?booking_id=' . $bookingId,
+            ]),
+        ]);
+
+        $response = $client->checkout->paymentLinks->create($request);
+        $link = $response->getPaymentLink();
+
+        if ($link === null || $link->getUrl() === null) {
+            throw new RuntimeException('Square did not return a payment link URL.');
+        }
+
+        return ['url' => $link->getUrl(), 'squareOrderId' => $link->getOrderId()];
+    }
+
+    private static function squareGroupBookingCheckoutUrl(
+        int $groupBookingId,
+        string $itemName,
+        int $amountCents,
+        string $currency
+    ): array {
+        if (!defined('SQUARE_ACCESS_TOKEN') || SQUARE_ACCESS_TOKEN === '' || SQUARE_ACCESS_TOKEN === 'EAAAl...') {
+            return [
+                'url' => APP_BASE_URL . '/payment_success.php?group_booking_id=' . $groupBookingId . '&_demo=1',
+                'squareOrderId' => null,
+            ];
+        }
+
+        $environment = (defined('SQUARE_ENVIRONMENT') && SQUARE_ENVIRONMENT === 'production')
+            ? SquareEnvironments::Production->value
+            : SquareEnvironments::Sandbox->value;
+
+        $client = new SquareClient(
+            token: SQUARE_ACCESS_TOKEN,
+            options: ['baseUrl' => $environment],
+        );
+
+        $request = new CreatePaymentLinkRequest([
+            'idempotencyKey' => bin2hex(random_bytes(16)),
+            'description'    => 'Group booking #' . $groupBookingId,
+            'quickPay'       => new QuickPay([
+                'name'       => $itemName,
+                'locationId' => SQUARE_LOCATION_ID,
+                'priceMoney' => new Money([
+                    'amount'   => $amountCents,
+                    'currency' => strtoupper($currency),
+                ]),
+            ]),
+            'checkoutOptions' => new \Square\Types\CheckoutOptions([
+                'redirectUrl' => APP_BASE_URL . '/payment_success.php?group_booking_id=' . $groupBookingId,
             ]),
         ]);
 

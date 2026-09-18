@@ -129,7 +129,8 @@ include ROOT_DIR . '/templates/header.php';
         </ul>
 
         <p style="color:var(--color-muted);font-size:.9rem">
-            Après réception de votre demande, nous vous contacterons pour confirmer la disponibilité et finaliser le menu.
+            Après réception de votre demande, nous vous contacterons pour confirmer la disponibilité. Une fois la séance validée,
+            vous recevrez ensuite un lien de paiement pour la confirmer définitivement.
         </p>
     </div>
 

@@ -35,15 +35,13 @@ include ROOT_DIR . '/templates/header.php';
                 <tbody>
                     <?php foreach ($requests as $r): ?>
                         <?php
-                            $estimatedPrice = GroupBookingModel::estimatePrice(
-                                (int) $r['nb_children'],
-                                $r['location_type']
-                            );
+                            $estimatedPrice = GroupBookingModel::estimatePriceFromRequest($r);
                             $locationLabel  = $r['location_type'] === 'home' ? '🏠 Domicile' : '📍 Escales';
                             $statusConfig   = [
-                                'pending'   => ['label' => 'En attente',  'class' => 'badge--warning'],
-                                'confirmed' => ['label' => 'Confirmée',   'class' => 'badge--success'],
-                                'cancelled' => ['label' => 'Annulée',     'class' => 'badge--error'],
+                                'pending'          => ['label' => 'En attente',            'class' => 'badge--warning'],
+                                'awaiting_payment' => ['label' => 'Paiement en attente',   'class' => 'badge--warning'],
+                                'confirmed'        => ['label' => 'Confirmée',             'class' => 'badge--success'],
+                                'cancelled'        => ['label' => 'Annulée',               'class' => 'badge--error'],
                             ];
                             $sc = $statusConfig[$r['status']] ?? ['label' => $r['status'], 'class' => ''];
                         ?>

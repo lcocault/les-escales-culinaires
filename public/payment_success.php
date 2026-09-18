@@ -5,8 +5,56 @@ require_once __DIR__ . '/init.php';
 Auth::requireLogin();
 
 Auth::start();
+$isGroupBooking = isset($_GET['group_booking_id']);
 $isBasket = isset($_GET['basket']);
 $isPack   = isset($_GET['pack']);
+
+// ── Group booking checkout ────────────────────────────────────────────────────
+if ($isGroupBooking) {
+    $groupBookingId = isset($_GET['group_booking_id']) ? (int) $_GET['group_booking_id'] : 0;
+    $isDemo         = isset($_GET['_demo']);
+
+    $groupBookingModel = new GroupBookingModel();
+    $request = $groupBookingModel->findById($groupBookingId);
+
+    if (!$request || (int) $request['user_id'] !== Auth::currentUserId()) {
+        flash('error', 'Demande introuvable.');
+        header('Location: ' . APP_BASE_URL . '/');
+        exit;
+    }
+
+    if (!in_array($request['status'], ['awaiting_payment', 'confirmed'], true)) {
+        flash('error', 'Aucun paiement n\'est attendu pour cette demande.');
+        header('Location: ' . APP_BASE_URL . '/my-group-bookings.php');
+        exit;
+    }
+
+    if ($request['status'] === 'awaiting_payment') {
+        $preStoredRef = (string) ($request['payment_intent_id'] ?? '');
+        $paymentRef = $isDemo
+            ? 'demo_group_' . $groupBookingId
+            : ($preStoredRef !== ''
+                ? $preStoredRef
+                : ($_GET['payment_intent'] ?? $_GET['referenceId'] ?? 'paid_group_' . $groupBookingId));
+
+        $groupBookingModel->confirmPayment($groupBookingId, $paymentRef);
+
+        $userModel = new UserModel();
+        $user      = $userModel->findById(Auth::currentUserId());
+
+        if ($user) {
+            $updatedRequest = array_merge($request, [
+                'status'            => 'confirmed',
+                'payment_intent_id' => $paymentRef,
+            ]);
+            Mailer::sendGroupBookingStatusUpdate($user, $updatedRequest);
+        }
+    }
+
+    flash('success', 'Votre règlement a bien été reçu. Votre séance anniversaire est confirmée.');
+    header('Location: ' . APP_BASE_URL . '/my-group-bookings.php');
+    exit;
+}
 
 // ── Basket checkout ──────────────────────────────────────────────────────────
 if ($isPack) {
@@ -132,4 +180,3 @@ if ($booking['status'] === 'pending') {
 flash('success', 'Votre réservation est confirmée ! Vous recevrez un e-mail de confirmation.');
 header('Location: ' . APP_BASE_URL . '/my-sessions.php');
 exit;
-

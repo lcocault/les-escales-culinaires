@@ -89,6 +89,18 @@ class GroupBookingModelTest extends TestCase
         $this->assertSame(5 * GroupBookingModel::PRICE_ESCALES_CENTS, $priceEscales);
     }
 
+    public function testEstimatePriceFromRequestUsesSlotSpecificPricesWhenProvided(): void
+    {
+        $request = [
+            'nb_children'                    => 6,
+            'location_type'                  => 'escales',
+            'price_per_child_home_cents'     => 2800,
+            'price_per_child_escales_cents'  => 3900,
+        ];
+
+        $this->assertSame(23400, GroupBookingModel::estimatePriceFromRequest($request));
+    }
+
     // -------------------------------------------------------------------------
     // create() – SQL and parameters
     // -------------------------------------------------------------------------
@@ -252,5 +264,58 @@ class GroupBookingModelTest extends TestCase
 
         $this->assertNull($capturedParams[':admin_notes']);
         $this->assertSame('cancelled', $capturedParams[':status']);
+    }
+
+    public function testStorePaymentReferencePassesCorrectParameters(): void
+    {
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')->willReturn($stmt);
+
+        $this->injectPdo($pdo);
+
+        $model = new GroupBookingModel();
+        $model->storePaymentReference(12, 'sq_order_123');
+
+        $this->assertSame(12, $capturedParams[':id']);
+        $this->assertSame('sq_order_123', $capturedParams[':payment_intent_id']);
+    }
+
+    public function testConfirmPaymentPassesCorrectParameters(): void
+    {
+        $capturedSql = '';
+        $capturedParams = [];
+
+        $stmt = $this->createMock(PDOStatement::class);
+        $stmt->method('execute')
+            ->willReturnCallback(function (array $params) use (&$capturedParams) {
+                $capturedParams = $params;
+                return true;
+            });
+
+        $pdo = $this->createMock(PDO::class);
+        $pdo->method('prepare')
+            ->willReturnCallback(function (string $sql) use (&$capturedSql, $stmt) {
+                $capturedSql = $sql;
+                return $stmt;
+            });
+
+        $this->injectPdo($pdo);
+
+        $model = new GroupBookingModel();
+        $model->confirmPayment(8, 'paid_group_8');
+
+        $this->assertStringContainsString("status = 'confirmed'", $capturedSql);
+        $this->assertStringContainsString("status = 'awaiting_payment'", $capturedSql);
+        $this->assertSame(8, $capturedParams[':id']);
+        $this->assertSame('paid_group_8', $capturedParams[':payment_intent_id']);
     }
 }
