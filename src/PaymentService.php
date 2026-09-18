@@ -154,7 +154,7 @@ class PaymentService
 
         return match ($provider) {
             'stripe' => self::verifyStripeGroupBookingPayment($groupBookingId, $providerReference),
-            'square' => self::verifySquareGroupBookingPayment($storedPaymentReference ?: $providerReference),
+            'square' => self::verifySquareGroupBookingPayment($providerReference ?: $storedPaymentReference),
             default  => throw new RuntimeException(
                 "Unsupported PAYMENT_PROVIDER \"$provider\". Must be \"stripe\" or \"square\"."
             ),

@@ -31,6 +31,7 @@ include ROOT_DIR . '/templates/header.php';
                         <th>Lieu</th>
                         <th>Tarif estimé</th>
                         <th>Statut</th>
+                        <th>Action</th>
                         <th>Demandé le</th>
                     </tr>
                 </thead>
@@ -53,18 +54,18 @@ include ROOT_DIR . '/templates/header.php';
                             <td><?= $locationLabel ?></td>
                             <td><?= e(formatPrice($estimatedPrice)) ?></td>
                             <td><span class="badge <?= $sc['class'] ?>"><?= e($sc['label']) ?></span></td>
+                            <td>
+                                <?php if ($r['status'] === 'awaiting_payment'): ?>
+                                    <a href="<?= APP_BASE_URL ?>/group-booking-pay.php?id=<?= (int) $r['id'] ?>" class="btn btn--primary btn--sm">💳 Régler</a>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
                             <td><?= e(date('d/m/Y', strtotime($r['created_at']))) ?></td>
                         </tr>
-                        <?php if ($r['status'] === 'awaiting_payment'): ?>
-                            <tr>
-                                <td colspan="6" style="padding-top:0">
-                                    <a href="<?= APP_BASE_URL ?>/group-booking-pay.php?id=<?= (int) $r['id'] ?>" class="btn btn--primary btn--sm">💳 Régler cette séance</a>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
                         <?php if ($r['admin_notes']): ?>
                             <tr>
-                                <td colspan="6" style="font-size:.9rem;color:var(--color-muted);padding-top:0">
+                                <td colspan="7" style="font-size:.9rem;color:var(--color-muted);padding-top:0">
                                     💬 Message de notre équipe : <?= e($r['admin_notes']) ?>
                                 </td>
                             </tr>

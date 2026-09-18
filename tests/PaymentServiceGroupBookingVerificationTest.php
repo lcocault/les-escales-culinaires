@@ -299,5 +299,28 @@ namespace {
 
             $this->assertSame('sq_order_order_3', $result);
         }
+
+        /**
+         * @runInSeparateProcess
+         * @preserveGlobalState disabled
+         */
+        public function testVerifySquareGroupBookingPaymentPrefersCallbackReferenceOverStoredReference(): void
+        {
+            define('PAYMENT_PROVIDER', 'square');
+            define('SQUARE_ACCESS_TOKEN', 'square_live_token');
+            define('SQUARE_LOCATION_ID', 'loc_123');
+            define('SQUARE_ENVIRONMENT', 'sandbox');
+
+            \Square\TestState::$orderResponse = new TestSquareOrderResponse(
+                new TestSquareOrder('OPEN', [new TestSquareTender('pay_4')])
+            );
+            \Square\TestState::$paymentResponses['pay_4'] = new TestSquarePaymentResponse(
+                new TestSquarePayment('COMPLETED')
+            );
+
+            $result = PaymentService::verifyGroupBookingPayment(33, 'order_4', 'sq_order_old_order');
+
+            $this->assertSame('sq_order_order_4', $result);
+        }
     }
 }
