@@ -22,9 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $adminNotes = trim($_POST['admin_notes'] ?? '');
 
     $allowedStatuses = match ($request['status']) {
+        'pending'          => ['pending', 'awaiting_payment', 'cancelled'],
         'awaiting_payment' => ['awaiting_payment', 'cancelled'],
         'confirmed'        => ['confirmed', 'cancelled'],
-        default            => ['pending', 'awaiting_payment', 'cancelled'],
+        default            => ['cancelled'],
     };
 
     if (!in_array($newStatus, $allowedStatuses, true)) {
@@ -64,6 +65,11 @@ $locationLabel  = $request['location_type'] === 'home'
     ? '🏠 Domicile'
     : '📍 Escales Culinaires (36 rue Boieldieu, 31300 Toulouse)';
 $statusOptions = match ($request['status']) {
+    'pending' => [
+        'pending'          => '⏳ En attente',
+        'awaiting_payment' => '💳 Paiement en attente',
+        'cancelled'        => '❌ Annulée',
+    ],
     'awaiting_payment' => [
         'awaiting_payment' => '💳 Paiement en attente',
         'cancelled'        => '❌ Annulée',
@@ -73,9 +79,7 @@ $statusOptions = match ($request['status']) {
         'cancelled' => '❌ Annulée',
     ],
     default => [
-        'pending'          => '⏳ En attente',
-        'awaiting_payment' => '💳 Paiement en attente',
-        'cancelled'        => '❌ Annulée',
+        'cancelled' => '❌ Annulée',
     ],
 };
 

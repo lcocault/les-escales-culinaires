@@ -276,5 +276,28 @@ namespace {
 
             $this->assertNull($result);
         }
+
+        /**
+         * @runInSeparateProcess
+         * @preserveGlobalState disabled
+         */
+        public function testVerifySquareGroupBookingPaymentUsesCallbackReferenceWhenStoredReferenceIsMissing(): void
+        {
+            define('PAYMENT_PROVIDER', 'square');
+            define('SQUARE_ACCESS_TOKEN', 'square_live_token');
+            define('SQUARE_LOCATION_ID', 'loc_123');
+            define('SQUARE_ENVIRONMENT', 'sandbox');
+
+            \Square\TestState::$orderResponse = new TestSquareOrderResponse(
+                new TestSquareOrder('OPEN', [new TestSquareTender('pay_3')])
+            );
+            \Square\TestState::$paymentResponses['pay_3'] = new TestSquarePaymentResponse(
+                new TestSquarePayment('COMPLETED')
+            );
+
+            $result = PaymentService::verifyGroupBookingPayment(33, 'order_3', null);
+
+            $this->assertSame('sq_order_order_3', $result);
+        }
     }
 }
