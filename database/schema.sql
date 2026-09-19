@@ -218,8 +218,10 @@ CREATE TABLE IF NOT EXISTS group_booking_requests (
     allergies               TEXT,
     additional_info         TEXT,
     status                  VARCHAR(20)  NOT NULL DEFAULT 'pending'
-                                CHECK (status IN ('pending', 'confirmed', 'cancelled')),
+                                CHECK (status IN ('pending', 'awaiting_payment', 'confirmed', 'cancelled')),
     admin_notes             TEXT,
+    payment_intent_id       VARCHAR(255),
+    paid_at                 TIMESTAMPTZ,
     created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at              TIMESTAMPTZ
 );

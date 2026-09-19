@@ -148,8 +148,11 @@ class Mailer
         array $user,
         array $request
     ): void {
-        $statusLabel = $request['status'] === 'confirmed' ? 'confirmée' : 'annulée';
-        $subject     = 'Votre demande de séance anniversaire a été ' . $statusLabel;
+        $subject = match ($request['status']) {
+            'awaiting_payment' => 'Votre séance anniversaire est validée – paiement à finaliser',
+            'confirmed'        => 'Votre séance anniversaire est confirmée',
+            default            => 'Votre demande de séance anniversaire a été annulée',
+        };
         $body        = self::groupBookingStatusUpdateBody($user, $request);
         self::send($user['email'], $subject, $body);
     }
@@ -212,24 +215,52 @@ class Mailer
 
     private static function groupBookingStatusUpdateBody(array $user, array $request): string
     {
-        $name        = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
-        $date        = htmlspecialchars($request['preferred_date']);
-        $statusLabel = $request['status'] === 'confirmed' ? 'confirmée ✅' : 'annulée ❌';
-        $adminNotes  = $request['admin_notes'] ? htmlspecialchars($request['admin_notes']) : null;
-        $baseUrl     = APP_BASE_URL;
+        $name          = htmlspecialchars($user['first_name'] . ' ' . $user['last_name']);
+        $date          = htmlspecialchars($request['preferred_date']);
+        $adminNotes    = $request['admin_notes'] ? nl2br(htmlspecialchars($request['admin_notes'])) : null;
+        $baseUrl       = APP_BASE_URL;
+        $paymentUrl    = $baseUrl . '/group-booking-pay.php?id=' . (int) $request['id'];
+        $estimatedCents = self::groupBookingEstimatedPriceCents($request);
+        $estimatedPrice = number_format($estimatedCents / 100, 2, ',', ' ') . ' €';
 
         $notesBlock = $adminNotes
             ? "<p>💬 Message de notre équipe : <em>{$adminNotes}</em></p>"
             : '';
 
-        return <<<HTML
-        <p>Bonjour {$name},</p>
-        <p>Votre demande de séance anniversaire pour le <strong>{$date}</strong> a été <strong>{$statusLabel}</strong>.</p>
-        {$notesBlock}
-        <p>Pour toute question, répondez simplement à cet e-mail.</p>
-        <p>À bientôt aux Escales Culinaires !</p>
-        <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
-        HTML;
+        return match ($request['status']) {
+            'awaiting_payment' => <<<HTML
+            <p>Bonjour {$name},</p>
+            <p>Bonne nouvelle : votre séance anniversaire du <strong>{$date}</strong> a été validée par notre équipe.</p>
+            <p>Pour confirmer définitivement la réservation, il ne reste plus qu'à procéder au règlement de <strong>{$estimatedPrice}</strong>.</p>
+            {$notesBlock}
+            <p><a href="{$paymentUrl}">👉 Régler ma séance anniversaire</a></p>
+            <p>Dès réception du paiement, votre séance sera confirmée.</p>
+            <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
+            HTML,
+            'confirmed' => <<<HTML
+            <p>Bonjour {$name},</p>
+            <p>Votre paiement a bien été reçu : votre séance anniversaire du <strong>{$date}</strong> est maintenant <strong>confirmée ✅</strong>.</p>
+            {$notesBlock}
+            <p>Pour toute question, répondez simplement à cet e-mail.</p>
+            <p>À bientôt aux Escales Culinaires !</p>
+            <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
+            HTML,
+            default => <<<HTML
+            <p>Bonjour {$name},</p>
+            <p>Votre demande de séance anniversaire pour le <strong>{$date}</strong> a été <strong>annulée ❌</strong>.</p>
+            {$notesBlock}
+            <p>Pour toute question, répondez simplement à cet e-mail.</p>
+            <p>À bientôt aux Escales Culinaires !</p>
+            <p><a href="{$baseUrl}/my-group-bookings.php">Voir ma demande</a></p>
+            HTML,
+        };
+    }
+
+    private static function groupBookingEstimatedPriceCents(array $request): int
+    {
+        require_once __DIR__ . '/GroupBookingModel.php';
+
+        return GroupBookingModel::estimatePriceFromRequest($request);
     }
 
     public static function sendRatingReminder(

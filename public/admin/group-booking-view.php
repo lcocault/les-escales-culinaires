@@ -21,7 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $newStatus  = trim($_POST['status']      ?? '');
     $adminNotes = trim($_POST['admin_notes'] ?? '');
 
-    if (!in_array($newStatus, ['pending', 'confirmed', 'cancelled'], true)) {
+    $allowedStatuses = match ($request['status']) {
+        'pending'          => ['pending', 'awaiting_payment', 'cancelled'],
+        'awaiting_payment' => ['awaiting_payment', 'cancelled'],
+        'confirmed'        => ['confirmed', 'cancelled'],
+        default            => ['cancelled'],
+    };
+
+    if (!in_array($newStatus, $allowedStatuses, true)) {
         $errors[] = 'Statut invalide.';
     }
 
@@ -29,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $model->updateStatus($id, $newStatus, $adminNotes ?: null);
 
         // Notify the user if status changed
-        if ($newStatus !== $request['status'] && in_array($newStatus, ['confirmed', 'cancelled'], true)) {
+        if ($newStatus !== $request['status'] && in_array($newStatus, ['awaiting_payment', 'cancelled'], true)) {
             $userModel = new UserModel();
             $user      = $userModel->findById((int) $request['user_id']);
             if ($user) {
@@ -50,13 +57,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $request = $model->findById($id);
 }
 
-$estimatedPrice = GroupBookingModel::estimatePrice(
-    (int) $request['nb_children'],
-    $request['location_type']
-);
+$estimatedPrice = GroupBookingModel::estimatePriceFromRequest($request);
+$unitPrice      = $request['location_type'] === 'home'
+    ? ((int) ($request['price_per_child_home_cents'] ?? GroupBookingModel::PRICE_HOME_CENTS))
+    : ((int) ($request['price_per_child_escales_cents'] ?? GroupBookingModel::PRICE_ESCALES_CENTS));
 $locationLabel  = $request['location_type'] === 'home'
     ? '🏠 Domicile'
     : '📍 Escales Culinaires (36 rue Boieldieu, 31300 Toulouse)';
+$statusOptions = match ($request['status']) {
+    'pending' => [
+        'pending'          => '⏳ En attente',
+        'awaiting_payment' => '💳 Paiement en attente',
+        'cancelled'        => '❌ Annulée',
+    ],
+    'awaiting_payment' => [
+        'awaiting_payment' => '💳 Paiement en attente',
+        'cancelled'        => '❌ Annulée',
+    ],
+    'confirmed' => [
+        'confirmed' => '✅ Réglée et confirmée',
+        'cancelled' => '❌ Annulée',
+    ],
+    default => [
+        'cancelled' => '❌ Annulée',
+    ],
+};
 
 $pageTitle = 'Demande anniversaire #' . $id;
 include ROOT_DIR . '/templates/header.php';
@@ -137,7 +162,7 @@ include ROOT_DIR . '/templates/header.php';
             <tr>
                 <th style="text-align:left;padding:.4rem .6rem;color:var(--color-muted)">Tarif estimé</th>
                 <td style="padding:.4rem .6rem">
-                    <?= e(formatPrice($request['location_type'] === 'home' ? GroupBookingModel::PRICE_HOME_CENTS : GroupBookingModel::PRICE_ESCALES_CENTS)) ?>/enfant
+                    <?= e(formatPrice($unitPrice)) ?>/enfant
                     × <?= (int) $request['nb_children'] ?> = <strong><?= e(formatPrice($estimatedPrice)) ?></strong>
                 </td>
             </tr>
@@ -168,9 +193,9 @@ include ROOT_DIR . '/templates/header.php';
             <div class="form-group">
                 <label for="status">Statut</label>
                 <select id="status" name="status" required>
-                    <option value="pending"   <?= $request['status'] === 'pending'   ? 'selected' : '' ?>>⏳ En attente</option>
-                    <option value="confirmed" <?= $request['status'] === 'confirmed' ? 'selected' : '' ?>>✅ Confirmée</option>
-                    <option value="cancelled" <?= $request['status'] === 'cancelled' ? 'selected' : '' ?>>❌ Annulée</option>
+                    <?php foreach ($statusOptions as $value => $label): ?>
+                        <option value="<?= e($value) ?>" <?= $request['status'] === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
@@ -178,7 +203,7 @@ include ROOT_DIR . '/templates/header.php';
                 <label for="admin_notes">Message pour le demandeur <span class="optional">(optionnel)</span></label>
                 <textarea id="admin_notes" name="admin_notes" rows="4"
                           placeholder="Détails de confirmation, instructions, raison d'annulation…"><?= e($request['admin_notes'] ?? '') ?></textarea>
-                <p class="form-hint">Ce message sera envoyé par e-mail au demandeur lors d'un changement de statut vers "Confirmée" ou "Annulée".</p>
+                <p class="form-hint">Ce message sera envoyé par e-mail au demandeur lors d'un changement de statut vers "Paiement en attente" ou "Annulée".</p>
             </div>
 
             <div class="mt-3">

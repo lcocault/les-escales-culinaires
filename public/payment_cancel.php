@@ -3,8 +3,21 @@
 require_once __DIR__ . '/init.php';
 
 Auth::start();
+$isGroupBooking = isset($_GET['group_booking_id']);
 $isBasket = isset($_GET['basket']);
 $isPack   = isset($_GET['pack']);
+
+if ($isGroupBooking) {
+    if (!Auth::isLoggedIn()) {
+        flash('info', 'Reconnectez-vous pour reprendre le règlement de votre séance anniversaire.');
+        header('Location: ' . APP_BASE_URL . '/login.php');
+        exit;
+    }
+
+    flash('info', 'Le paiement a été annulé. Votre séance anniversaire n\'est pas encore confirmée.');
+    header('Location: ' . APP_BASE_URL . '/my-group-bookings.php');
+    exit;
+}
 
 if ($isPack && Auth::isLoggedIn()) {
     // Clean up pending bookings created for the pack checkout
@@ -50,4 +63,3 @@ if ($isBasket && Auth::isLoggedIn()) {
 flash('info', 'Le paiement a été annulé. Votre réservation n\'a pas été confirmée.');
 header('Location: ' . APP_BASE_URL . '/my-sessions.php');
 exit;
-

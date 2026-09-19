@@ -31,21 +31,20 @@ include ROOT_DIR . '/templates/header.php';
                         <th>Lieu</th>
                         <th>Tarif estimé</th>
                         <th>Statut</th>
+                        <th>Action</th>
                         <th>Demandé le</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($requests as $r): ?>
                         <?php
-                            $estimatedPrice = GroupBookingModel::estimatePrice(
-                                (int) $r['nb_children'],
-                                $r['location_type']
-                            );
+                            $estimatedPrice = GroupBookingModel::estimatePriceFromRequest($r);
                             $locationLabel  = $r['location_type'] === 'home' ? '🏠 Domicile' : '📍 Escales Culinaires';
                             $statusConfig   = [
-                                'pending'   => ['label' => 'En attente',  'class' => 'badge--warning'],
-                                'confirmed' => ['label' => 'Confirmée',   'class' => 'badge--success'],
-                                'cancelled' => ['label' => 'Annulée',     'class' => 'badge--error'],
+                                'pending'          => ['label' => 'En attente',          'class' => 'badge--warning'],
+                                'awaiting_payment' => ['label' => 'Paiement en attente', 'class' => 'badge--warning'],
+                                'confirmed'        => ['label' => 'Confirmée',           'class' => 'badge--success'],
+                                'cancelled'        => ['label' => 'Annulée',             'class' => 'badge--error'],
                             ];
                             $sc = $statusConfig[$r['status']] ?? ['label' => $r['status'], 'class' => ''];
                         ?>
@@ -55,11 +54,18 @@ include ROOT_DIR . '/templates/header.php';
                             <td><?= $locationLabel ?></td>
                             <td><?= e(formatPrice($estimatedPrice)) ?></td>
                             <td><span class="badge <?= $sc['class'] ?>"><?= e($sc['label']) ?></span></td>
+                            <td>
+                                <?php if ($r['status'] === 'awaiting_payment'): ?>
+                                    <a href="<?= APP_BASE_URL ?>/group-booking-pay.php?id=<?= (int) $r['id'] ?>" class="btn btn--primary btn--sm">💳 Régler</a>
+                                <?php else: ?>
+                                    —
+                                <?php endif; ?>
+                            </td>
                             <td><?= e(date('d/m/Y', strtotime($r['created_at']))) ?></td>
                         </tr>
                         <?php if ($r['admin_notes']): ?>
                             <tr>
-                                <td colspan="6" style="font-size:.9rem;color:var(--color-muted);padding-top:0">
+                                <td colspan="7" style="font-size:.9rem;color:var(--color-muted);padding-top:0">
                                     💬 Message de notre équipe : <?= e($r['admin_notes']) ?>
                                 </td>
                             </tr>
